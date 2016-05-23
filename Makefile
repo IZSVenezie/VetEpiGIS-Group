@@ -1,5 +1,5 @@
 #/***************************************************************************
-# QVetGroup
+# VetEpiGIS-Group
 #
 # Spatial functions for epidemiology, genomics
 #							 -------------------
@@ -40,7 +40,7 @@ SOURCES = \
 	__init__.py \
 	plugin/__init__.py
 
-PLUGINNAME = QVetGroup
+PLUGINNAME = VetEpiGISgroup
 
 PY_FILES = \
 	__init__.py \

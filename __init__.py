@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- QVetGroup
+ VetEpiGIS-Group
    A QGIS plugin 
    Spatial functions for vet epidemiology
                               -------------------
@@ -24,11 +24,11 @@
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
-    """Load QVetGroup class from file QVetGroup.
+    """Load VetEpiGISgroup class from file VetEpiGISgroup.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
     #
-    from .qvet_group import QVetGroup
-    return QVetGroup(iface)
+    from .vetepigis_group import VetEpiGISgroup
+    return VetEpiGISgroup(iface)

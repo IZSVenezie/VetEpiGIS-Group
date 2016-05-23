@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- QVetGroup
+ VetEpiGIS-Group
    A QGIS plugin
    Spatial functions for vet epidemiology
                               -------------------
@@ -40,7 +40,7 @@ import resources_rc
 
 from uuid import getnode as get_mac
 
-class QVetGroup:
+class VetEpiGISgroup:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -64,7 +64,7 @@ class QVetGroup:
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
-            'QVetGroup_{}.qm'.format(locale))
+            'VetEpiGISgroup_{}.qm'.format(locale))
 
         self.vers = '0.1'
         self.prevcur = self.iface.mapCanvas().cursor()
@@ -105,23 +105,23 @@ class QVetGroup:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('QVetGroup', message)
+        return QCoreApplication.translate('VetEpiGIS-Group', message)
 
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         self.actAbout = QAction(
-            QIcon(':/plugins/QVetGroup/images/icon02.png'),
-            QCoreApplication.translate('QVetGroup', 'About'),
+            QIcon(':/plugins/VetEpiGISgroup/images/icon02.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'About'),
             self.iface.mainWindow())
-        self.iface.addPluginToMenu('&QVetGroup', self.actAbout)
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actAbout)
         self.actAbout.triggered.connect(self.about)
 
         self.toolbar = self.iface.addToolBar(
-            QCoreApplication.translate('QVetGroup', 'QVetGroup'))
+            QCoreApplication.translate('VetEpiGIS-Group', 'VetEpiGIS-Group'))
         self.toolbar.setObjectName(
-            QCoreApplication.translate('QVetGroup', 'QVetGroup'))
+            QCoreApplication.translate('VetEpiGIS-Group', 'VetEpiGIS-Group'))
 
         """Add buttons to the toolbar"""
 
@@ -129,20 +129,20 @@ class QVetGroup:
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
-        self.iface.removePluginMenu('&QVetGroup', self.actAbout)
+        self.iface.removePluginMenu('&VetEpiGIS-Group', self.actAbout)
         del self.toolbar
 
 
     def about(self):
         dlg = xabout.Dialog()
         dlg.setWindowTitle('About')
-        dlg.label.setPixmap(QPixmap(':/plugins/QVetGroup/images/QVetGroup-about-banner.png'))
+        dlg.label.setPixmap(QPixmap(':/plugins/VetEpiGISgroup/images/QVetGroup-about-banner.png'))
         ow = dlg.textEdit.fontWeight()
 
         dlg.textEdit.setFontWeight(QFont.Bold)
-        dlg.textEdit.append('QVetGroup ' + self.vers +'\n')
+        dlg.textEdit.append('VetEpiGIS-Group ' + self.vers +'\n')
         dlg.textEdit.setFontWeight(ow)
-        dlg.textEdit.append('QVetGroup is a free QGIS plugin helping veterinarians in the management of spatial data related to animal disease.\n')
+        dlg.textEdit.append('VetEpiGIS-Group is a free QGIS plugin helping veterinarians in the management of spatial data related to animal disease.\n')
         dlg.textEdit.setFontWeight(QFont.Bold)
         dlg.textEdit.append('Developers:')
         dlg.textEdit.setFontWeight(ow)
