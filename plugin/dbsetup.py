@@ -26,6 +26,11 @@ from PyQt4.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileIn
     pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
 from PyQt4.QtSql import *
 
+import psycopg2
+import psycopg2.extensions
+# use unicode!
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
 from dbsetup_dialog import Ui_Dialog
 
@@ -40,6 +45,7 @@ class Dialog(QDialog, Ui_Dialog):
                         
         self.setupUi(self)
         self.plugin_dir = ''
+        self.settings = ''
 
         # self.comboBox.currentIndexChanged.connect(self.seltype)
         self.commandLinkButton.clicked.connect(self.createNewSLdb)
@@ -47,6 +53,8 @@ class Dialog(QDialog, Ui_Dialog):
 
         self.groupBox.clicked.connect(self.seltype)
         self.groupBox_2.clicked.connect(self.seltype)
+
+        self.commandLinkButton_2.clicked.connect(self.createPGtables)
 
 
     def dbSource(self):
@@ -85,5 +93,31 @@ class Dialog(QDialog, Ui_Dialog):
             QApplication.restoreOverrideCursor()
         except IOError:
             return False
+
+
+    def createPGtables(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        self.settings.beginGroup('PostgreSQL/connections/' + self.comboBox.currentText())
+        self.PGhost = self.settings.value('host', '')
+        self.PGport = self.settings.value('port', '')
+        self.PGdatabase = self.settings.value('database', '')
+        self.PGusername = self.settings.value('username', '')
+        self.PGpassword = self.settings.value('password', '')
+        self.settings.endGroup()
+
+        try:
+            self.PGcon = psycopg2.connect(host=self.PGhost, port=self.PGport, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+        except TypeError:
+            self.PGcon = psycopg2.connect(host=self.PGhost, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+
+        self.cursor = self.PGcon.cursor()
+        sql = "select * from kisterseg175;"
+        self.cursor.execute(sql)
+        result = self.cursor.fetchone()
+
+        self.lineEdit.setText(str(result[0]))
+
+        QApplication.restoreOverrideCursor()
 
 

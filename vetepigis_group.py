@@ -26,17 +26,23 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
     pyqtSignal, QRegExp, QDateTime, QTranslator, QSize
 from PyQt4.QtSql import *
-from PyQt4.QtXml import *
+# from PyQt4.QtXml import *
 
 from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
     QgsCoordinateTransform, QGis, QgsVectorFileWriter, QgsMapLayerRegistry, QgsFeature, \
     QgsGeometry, QgsFeatureRequest, QgsPoint, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsRectangle, QgsDataSourceURI, QgsDataProvider, QgsComposition, QgsComposerMap, QgsAtlasComposition
+
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
 from plugin import xabout, dbsetup
 import resources_rc
 
+import psycopg2
+import psycopg2.extensions
+# use unicode!
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
 from uuid import getnode as get_mac
 
@@ -87,6 +93,7 @@ class VetEpiGISgroup:
         # if not os.path.isfile(dbuidpath):
         #     shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
         #
+        self.dbtype = 'spatialite'
         self.uri = QgsDataSourceURI()
         # self.uri.setDatabase(dbuidpath)
         #
@@ -162,13 +169,18 @@ class VetEpiGISgroup:
             dlg.comboBox.addItem(pg)
         self.settings.endGroup()
 
+        dlg.settings = self.settings
+
         if dlg.exec_() == QDialog.Accepted:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+
             if dlg.groupBox.isChecked():
                 self.uri.setDatabase(dlg.lineEdit.text())
                 self.db = QSqlDatabase.addDatabase('QSPATIALITE')
                 self.db.setDatabaseName(self.uri.database())
 
             if dlg.groupBox_2.isChecked():
+                self.dbtype = 'postgis'
                 self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox.currentText())
                 self.PGhost = self.settings.value('host', '')
                 self.PGport = self.settings.value('port', '')
@@ -180,23 +192,42 @@ class VetEpiGISgroup:
                 self.settings.endGroup()
                 # self.uri.setConnection(self.PGhost, str(self.PGport), self.PGdatabase, self.PGusername, self.PGpassword)
 # http://gis.stackexchange.com/questions/86707/how-to-perform-sql-queries-and-get-results-from-qgis-python-console
-                self.db = QSqlDatabase.addDatabase('QPSQL')
-                self.db.setHostName(self.PGhost)
-                self.db.setPort(int(self.PGport))
-                self.db.setDatabaseName(self.PGdatabase)
-                self.db.setUserName(self.PGusername)
-                self.db.setPassword(self.PGpassword)
+#                 self.db = QSqlDatabase.addDatabase('QPSQL')
+#                 self.db.setHostName(self.PGhost)
+#                 self.db.setPort(int(self.PGport))
+#                 self.db.setDatabaseName(self.PGdatabase)
+#                 self.db.setUserName(self.PGusername)
+#                 self.db.setPassword(self.PGpassword)
+#
+#                 self.db.open()
+#                 query = QSqlQuery(self.db)
+#                 query.exec_("select * from kisterseg175;")
+#                 query.next()
+#                 self.iface.messageBar().pushMessage('Information', str(query.value(0)), level=QgsMessageBar.INFO)
+#                 self.db.close()
 
-                self.db.open()
-                query = QSqlQuery(self.db)
-                query.exec_("select * from kisterseg175;")
-                query.next()
-                self.iface.messageBar().pushMessage('Information', str(query.value(0)), level=QgsMessageBar.INFO)
-                self.db.close()
+                try:
+                    self.PGcon = psycopg2.connect(host=self.PGhost, port=self.PGport, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+                except TypeError:
+                    self.PGcon = psycopg2.connect(host=self.PGhost, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+
+                # self.cursor = self.PGcon.cursor()
+                # sql = "select * from kisterseg175;"
+                # self.cursor.execute(sql)
+                # result = self.cursor.fetchone()
+                #
+                # self.iface.messageBar().pushMessage('Information', str(result[0]), level=QgsMessageBar.INFO)
+
+            QApplication.restoreOverrideCursor()
+
+
+    # def __del__(self):
+    #     self.PGcon.close()
 
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
+        # self.PGcon.close()
         self.iface.removePluginMenu('&VetEpiGIS-Group', self.actAbout)
         del self.toolbar
 
