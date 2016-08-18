@@ -23,7 +23,7 @@
 import os, shutil
 from PyQt4.QtGui import *
 from PyQt4.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
-    pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QIODevice, QTextStream
+    pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
 from PyQt4.QtSql import *
 
 
@@ -46,7 +46,13 @@ class Dialog(QDialog, Ui_Dialog):
 
         self.comboBox.currentIndexChanged.connect(self.seltype)
         self.commandLinkButton.clicked.connect(self.createNewSLdb)
+        self.toolButton.clicked.connect(self.dbSource)
 
+
+    def dbSource(self):
+        dbpath = QFileDialog.getOpenFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
+        if not os.path.isfile(dbpath):
+            self.lineEdit.setText(dbpath)
 
 
     def seltype(self):
@@ -68,14 +74,6 @@ class Dialog(QDialog, Ui_Dialog):
                 shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbpath)
                 self.lineEdit.setText(dbpath)
 
-            # file.open( QIODevice.WriteOnly | QIODevice.Text )
-
-        #     out = QTextStream(file)
-        #     out << self.plainTextEdit.toPlainText()
-        #     out.flush()
-        #     file.close()
-        #     self.close()
-        #     return True
             QApplication.restoreOverrideCursor()
         except IOError:
             return False

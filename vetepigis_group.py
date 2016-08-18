@@ -78,18 +78,18 @@ class VetEpiGISgroup:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
-        mac = '_'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
-        dbuid = 'db_%s.sqlite' % mac
-        dbfold = os.path.join(self.plugin_dir, 'db')
-        dbuidpath = os.path.join(dbfold, dbuid)
-        if not os.path.isfile(dbuidpath):
-            shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
-
+        # mac = '_'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
+        # dbuid = 'db_%s.sqlite' % mac
+        # dbfold = os.path.join(self.plugin_dir, 'db')
+        # dbuidpath = os.path.join(dbfold, dbuid)
+        # if not os.path.isfile(dbuidpath):
+        #     shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
+        #
         self.uri = QgsDataSourceURI()
-        self.uri.setDatabase(dbuidpath)
-
-        self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-        self.db.setDatabaseName(self.uri.database())
+        # self.uri.setDatabase(dbuidpath)
+        #
+        # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
+        # self.db.setDatabaseName(self.uri.database())
 
 
     # noinspection PyMethodMayBeStatic
@@ -142,7 +142,14 @@ class VetEpiGISgroup:
         x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
         y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
         dlg.move(x,y)
-        dlg.exec_()
+
+        if dlg.exec_() == QDialog.Accepted:
+            if dlg.comboBox.currentIndex()==0:
+                self.uri.setDatabase(dlg.lineEdit.text())
+                self.db = QSqlDatabase.addDatabase('QSPATIALITE')
+                self.db.setDatabaseName(self.uri.database())
+            else:
+                d = 2
 
 
     def unload(self):

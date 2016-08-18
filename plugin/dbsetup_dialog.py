@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'dbsetup_dialog_base.ui'
 #
-# Created: Thu Aug 18 06:41:24 2016
+# Created: Thu Aug 18 07:07:22 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName(_fromUtf8("Dialog"))
-        Dialog.resize(466, 319)
+        Dialog.resize(466, 336)
         self.gridLayout_3 = QtGui.QGridLayout(Dialog)
         self.gridLayout_3.setObjectName(_fromUtf8("gridLayout_3"))
         self.comboBox = QtGui.QComboBox(Dialog)
@@ -142,5 +142,5 @@ class Ui_Dialog(object):
         self.commandLinkButton_2.setText(_translate("Dialog", "create", None))
         self.label_6.setText(_translate("Dialog", "Username:", None))
         self.label_7.setText(_translate("Dialog", "Password:", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Dialog", "PostGIS", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Dialog", "PostgreSQL-PostGIS", None))
 
