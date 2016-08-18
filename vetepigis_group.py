@@ -59,6 +59,8 @@ class VetEpiGISgroup:
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
         # self.loadSettings()
+        self.settings = QSettings()
+
 
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
@@ -135,6 +137,17 @@ class VetEpiGISgroup:
         self.toolbar.addAction(self.actSetdb)
 
 
+    # def readPGcons(self):
+    #     self.settings.beginGroup("PostgreSQL/connections")
+    #     PGconns = self.setting.childGroups()
+    #     self.PGconns = {}
+    #     for pg in PGconns:
+    #         self.settings.beginGroup(pg)
+    #         self.PGconns[pg] = { i: self.settings.value(i) for i in self.settings.childKeys()}
+    #         self.settings.endGroup()
+    #     self.settings.endGroup()
+
+
     def setupDB(self):
         dlg = dbsetup.Dialog()
         dlg.setWindowTitle('Setup database connection')
@@ -143,13 +156,43 @@ class VetEpiGISgroup:
         y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
         dlg.move(x,y)
 
+        self.settings.beginGroup('PostgreSQL/connections')
+        PGconns = self.settings.childGroups()
+        for pg in PGconns:
+            dlg.comboBox.addItem(pg)
+        self.settings.endGroup()
+
         if dlg.exec_() == QDialog.Accepted:
-            if dlg.comboBox.currentIndex()==0:
+            if dlg.groupBox.isChecked():
                 self.uri.setDatabase(dlg.lineEdit.text())
                 self.db = QSqlDatabase.addDatabase('QSPATIALITE')
                 self.db.setDatabaseName(self.uri.database())
-            else:
-                d = 2
+
+            if dlg.groupBox_2.isChecked():
+                self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox.currentText())
+                self.PGhost = self.settings.value('host', '')
+                self.PGport = self.settings.value('port', '')
+                self.PGdatabase = self.settings.value('database', '')
+                self.PGusername = self.settings.value('username', '')
+                self.PGpassword = self.settings.value('password', '')
+                # self.iface.messageBar().pushMessage('Information',
+                #     self.PGhost + ', ' + self.PGport + ', ' + self.PGdatabase + ', ' + self.PGusername + ', ' + self.PGpassword, level=QgsMessageBar.INFO)
+                self.settings.endGroup()
+                # self.uri.setConnection(self.PGhost, str(self.PGport), self.PGdatabase, self.PGusername, self.PGpassword)
+# http://gis.stackexchange.com/questions/86707/how-to-perform-sql-queries-and-get-results-from-qgis-python-console
+                self.db = QSqlDatabase.addDatabase('QPSQL')
+                self.db.setHostName(self.PGhost)
+                self.db.setPort(int(self.PGport))
+                self.db.setDatabaseName(self.PGdatabase)
+                self.db.setUserName(self.PGusername)
+                self.db.setPassword(self.PGpassword)
+
+                self.db.open()
+                query = QSqlQuery(self.db)
+                query.exec_("select * from kisterseg175;")
+                query.next()
+                self.iface.messageBar().pushMessage('Information', str(query.value(0)), level=QgsMessageBar.INFO)
+                self.db.close()
 
 
     def unload(self):

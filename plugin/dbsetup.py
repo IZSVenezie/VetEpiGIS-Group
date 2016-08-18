@@ -41,12 +41,12 @@ class Dialog(QDialog, Ui_Dialog):
         self.setupUi(self)
         self.plugin_dir = ''
 
-        self.comboBox.addItem('SpatiaLite')
-        self.comboBox.addItem('PostGIS')
-
-        self.comboBox.currentIndexChanged.connect(self.seltype)
+        # self.comboBox.currentIndexChanged.connect(self.seltype)
         self.commandLinkButton.clicked.connect(self.createNewSLdb)
         self.toolButton.clicked.connect(self.dbSource)
+
+        self.groupBox.clicked.connect(self.seltype)
+        self.groupBox_2.clicked.connect(self.seltype)
 
 
     def dbSource(self):
@@ -56,7 +56,15 @@ class Dialog(QDialog, Ui_Dialog):
 
 
     def seltype(self):
-        self.tabWidget.setCurrentIndex(self.comboBox.currentIndex())
+        if self.groupBox.isChecked():
+            self.groupBox_2.setChecked(False)
+            self.groupBox.setChecked(True)
+
+        if self.groupBox_2.isChecked():
+            self.groupBox.setChecked(False)
+            self.groupBox_2.setChecked(True)
+
+                # self.tabWidget.setCurrentIndex(self.comboBox.currentIndex())
         # if self.comboBox.currentText()=='SpatiaLite':
         #     self.tabWidget.setCurrentIndex(0)
         # else:
