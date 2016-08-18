@@ -99,24 +99,39 @@ class Dialog(QDialog, Ui_Dialog):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
         self.settings.beginGroup('PostgreSQL/connections/' + self.comboBox.currentText())
-        self.PGhost = self.settings.value('host', '')
-        self.PGport = self.settings.value('port', '')
-        self.PGdatabase = self.settings.value('database', '')
-        self.PGusername = self.settings.value('username', '')
-        self.PGpassword = self.settings.value('password', '')
+        PGhost = self.settings.value('host', '')
+        PGport = self.settings.value('port', '')
+        PGdatabase = self.settings.value('database', '')
+        PGusername = self.settings.value('username', '')
+        PGpassword = self.settings.value('password', '')
         self.settings.endGroup()
 
         try:
-            self.PGcon = psycopg2.connect(host=self.PGhost, port=self.PGport, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+            PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
         except TypeError:
-            self.PGcon = psycopg2.connect(host=self.PGhost, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+            PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
 
-        self.cursor = self.PGcon.cursor()
-        sql = "select * from kisterseg175;"
-        self.cursor.execute(sql)
-        result = self.cursor.fetchone()
+        cursor = PGcon.cursor()
+        sql = """CREATE TABLE pois
+            (
+              id serial NOT NULL,
+              localid character varying(254),
+              code character varying(254),
+              activity character varying(254),
+              hrid character varying(254),
+              geom geometry,
+              CONSTRAINT pois_pkey PRIMARY KEY (id),
+              CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+              CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+            );"""
 
-        self.lineEdit.setText(str(result[0]))
+        cursor.execute(sql)
+        PGcon.commit()
+
+        # result = cursor.fetchone()
+
+        # self.lineEdit.setText(sql)
 
         QApplication.restoreOverrideCursor()
 
