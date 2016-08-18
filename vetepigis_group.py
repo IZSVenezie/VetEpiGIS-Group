@@ -34,7 +34,7 @@ from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
     QgsRectangle, QgsDataSourceURI, QgsDataProvider, QgsComposition, QgsComposerMap, QgsAtlasComposition
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
-from plugin import xabout
+from plugin import xabout, dbsetup
 import resources_rc
 
 
@@ -118,6 +118,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actAbout)
         self.actAbout.triggered.connect(self.about)
 
+        self.actSetdb = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/icon02.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Setup working database'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSetdb)
+        self.actSetdb.triggered.connect(self.setupDB)
+
         self.toolbar = self.iface.addToolBar(
             QCoreApplication.translate('VetEpiGIS-Group', 'VetEpiGIS-Group'))
         self.toolbar.setObjectName(
@@ -125,6 +132,17 @@ class VetEpiGISgroup:
 
         """Add buttons to the toolbar"""
 
+        self.toolbar.addAction(self.actSetdb)
+
+
+    def setupDB(self):
+        dlg = dbsetup.Dialog()
+        dlg.setWindowTitle('Setup database connection')
+        dlg.plugin_dir = self.plugin_dir
+        x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
+        y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
+        dlg.move(x,y)
+        dlg.exec_()
 
 
     def unload(self):

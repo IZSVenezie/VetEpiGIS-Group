@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/QVetGroup">
+    <qresource prefix="/plugins/VetEpiGISgroup">
         <file>images/icon02.png</file>
     </qresource>
 </RCC>
