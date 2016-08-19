@@ -24,6 +24,8 @@ import os, shutil
 from PyQt4.QtGui import *
 from PyQt4.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
     pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
+
+from qgis.core import QgsDataSourceURI
 from PyQt4.QtSql import *
 
 import psycopg2
@@ -98,6 +100,11 @@ class Dialog(QDialog, Ui_Dialog):
     def createPGtables(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
+        uri = QgsDataSourceURI()
+        uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
+        db = QSqlDatabase.addDatabase('QSPATIALITE')
+        db.setDatabaseName(uri.database())
+
         self.settings.beginGroup('PostgreSQL/connections/' + self.comboBox.currentText())
         PGhost = self.settings.value('host', '')
         PGport = self.settings.value('port', '')
@@ -112,24 +119,129 @@ class Dialog(QDialog, Ui_Dialog):
             PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
 
         cursor = PGcon.cursor()
-        sql = """CREATE TABLE pois
-            (
-              id serial NOT NULL,
+        sql = """
+            DROP TABLE pois, xdiseases, xpoitypes, xspecies, xstyles, outbreaks_point, outbreaks_area;
+            CREATE TABLE outbreaks_point (
+              gid serial NOT NULL,
+              localid character varying(254),
+              code character varying(254),
+              largescale character varying(254),
+              disease character varying(254),
+              animalno integer,
+              species character varying(254),
+              production character varying(254),
+              year integer,
+              status character varying(254),
+              suspect character varying(254),
+              confirmation character varying(254),
+              expiration character varying(254),
+              notes character varying(254),
+              hrid character varying(254),
+              timestamp character varying(254),
+              grouping character varying(254),
+              geom geometry,
+              CONSTRAINT outbreaks_point_pkey PRIMARY KEY (gid),
+              CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+              CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+            );
+            CREATE TABLE outbreaks_area (
+              gid serial NOT NULL,
+              localid character varying(254),
+              code character varying(254),
+              largescale character varying(254),
+              disease character varying(254),
+              animalno integer,
+              species character varying(254),
+              production character varying(254),
+              year integer,
+              status character varying(254),
+              suspect character varying(254),
+              confirmation character varying(254),
+              expiration character varying(254),
+              notes character varying(254),
+              hrid character varying(254),
+              timestamp character varying(254),
+              grouping character varying(254),
+              geom geometry,
+              CONSTRAINT outbreaks_area_pkey PRIMARY KEY (gid),
+              CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geom IS NULL),
+              CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+            );
+            CREATE TABLE pois (
+              gid serial NOT NULL,
               localid character varying(254),
               code character varying(254),
               activity character varying(254),
               hrid character varying(254),
               geom geometry,
-              CONSTRAINT pois_pkey PRIMARY KEY (id),
+              CONSTRAINT pois_pkey PRIMARY KEY (gid),
               CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
               CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
               CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
-            );"""
-
+            );
+            CREATE TABLE xdiseases (
+              id serial NOT NULL,
+              disease character varying(254),
+              lang character varying(254),
+              enid integer, CONSTRAINT xdiseases_pkey PRIMARY KEY (id)
+            );
+            CREATE TABLE xpoitypes (
+              id serial NOT NULL,
+              poitype character varying(254),
+              lang character varying(254),
+              enid integer, CONSTRAINT xpoitypes_pkey PRIMARY KEY (id)
+            );
+            CREATE TABLE xspecies (
+              id serial NOT NULL,
+              species character varying(254),
+              lang character varying(254),
+              enid integer, CONSTRAINT xspecies_pkey PRIMARY KEY (id)
+            );
+            CREATE TABLE xstyles (
+              id serial NOT NULL,
+              ltype character varying(254),
+              sld character varying(254), CONSTRAINT xstyles_pkey PRIMARY KEY (id)
+            );
+            """
         cursor.execute(sql)
 
+        PGcon.commit()
+
+        if not db.open():
+            db.open()
+
+        sql = ''
+        query = db.exec_('select * from xdiseases')
+        while query.next():
+            sql = sql + """insert into xdiseases (disease, lang) values('%s', '%s');""" % \
+                (query.value(1).replace("'", "''"), query.value(2))
+        cursor.execute(sql)
+
+        sql = ''
+        query = db.exec_('select * from xpoitypes')
+        while query.next():
+            sql = sql + "insert into xpoitypes (poitype, lang) values('%s', '%s');" % \
+                (query.value(1), query.value(2))
+        cursor.execute(sql)
+
+        sql = ''
+        query = db.exec_('select * from xspecies')
+        while query.next():
+            sql = sql + "insert into xspecies (species, lang) values('%s', '%s');" % \
+                (query.value(1), query.value(2))
+        cursor.execute(sql)
+
+        sql = ''
+        query = db.exec_('select * from xstyles')
+        while query.next():
+            sql = sql + "insert into xstyles (ltype, sld) values('%s', '%s');" % \
+                        (query.value(1), query.value(2))
+        cursor.execute(sql)
 
         PGcon.commit()
+        db.close()
 
         # result = cursor.fetchone()
 

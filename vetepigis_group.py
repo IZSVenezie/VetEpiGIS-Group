@@ -128,15 +128,15 @@ class VetEpiGISgroup:
         self.actAbout.triggered.connect(self.about)
 
         self.actSetdb = QAction(
-            QIcon(':/plugins/VetEpiGISgroup/images/icon02.png'),
+            QIcon(':/plugins/VetEpiGISgroup/images/server.png'),
             QCoreApplication.translate('VetEpiGIS-Group', 'Setup working database'),
             self.iface.mainWindow())
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSetdb)
         self.actSetdb.triggered.connect(self.setupDB)
 
         self.actMerge = QAction(
-            QIcon(':/plugins/VetEpiGISgroup/images/icon02.png'),
-            QCoreApplication.translate('VetEpiGIS-Group', 'Setup working database'),
+            QIcon(':/plugins/VetEpiGISgroup/images/server-1.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Merging databases'),
             self.iface.mainWindow())
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actMerge)
         self.actMerge.triggered.connect(self.mergeDB)
