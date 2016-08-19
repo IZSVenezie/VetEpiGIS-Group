@@ -35,7 +35,7 @@ from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
 
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
-from plugin import xabout, dbsetup
+from plugin import xabout, dbsetup, merge
 import resources_rc
 
 import psycopg2
@@ -93,7 +93,7 @@ class VetEpiGISgroup:
         # if not os.path.isfile(dbuidpath):
         #     shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
         #
-        self.dbtype = 'spatialite'
+        self.dbtype = ''
         self.uri = QgsDataSourceURI()
         # self.uri.setDatabase(dbuidpath)
         #
@@ -134,6 +134,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSetdb)
         self.actSetdb.triggered.connect(self.setupDB)
 
+        self.actMerge = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/icon02.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Setup working database'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actMerge)
+        self.actMerge.triggered.connect(self.mergeDB)
+
         self.toolbar = self.iface.addToolBar(
             QCoreApplication.translate('VetEpiGIS-Group', 'VetEpiGIS-Group'))
         self.toolbar.setObjectName(
@@ -142,17 +149,25 @@ class VetEpiGISgroup:
         """Add buttons to the toolbar"""
 
         self.toolbar.addAction(self.actSetdb)
+        self.toolbar.addAction(self.actMerge)
 
 
-    # def readPGcons(self):
-    #     self.settings.beginGroup("PostgreSQL/connections")
-    #     PGconns = self.setting.childGroups()
-    #     self.PGconns = {}
-    #     for pg in PGconns:
-    #         self.settings.beginGroup(pg)
-    #         self.PGconns[pg] = { i: self.settings.value(i) for i in self.settings.childKeys()}
-    #         self.settings.endGroup()
-    #     self.settings.endGroup()
+    def mergeDB(self):
+        if self.dbtype == '':
+            self.iface.messageBar().pushMessage('Information', 'Setup central database connection!',
+                                                level=QgsMessageBar.INFO)
+            return
+
+        dlg = merge.Dialog()
+        dlg.setWindowTitle('Merge database')
+        # dlg.plugin_dir = self.plugin_dir
+        x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
+        y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
+        dlg.move(x,y)
+
+        if dlg.exec_() == QDialog.Accepted:
+            k = 2
+
 
 
     def setupDB(self):
@@ -175,6 +190,7 @@ class VetEpiGISgroup:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if dlg.groupBox.isChecked():
+                self.dbtype = 'spatialite'
                 self.uri.setDatabase(dlg.lineEdit.text())
                 self.db = QSqlDatabase.addDatabase('QSPATIALITE')
                 self.db.setDatabaseName(self.uri.database())

@@ -127,6 +127,8 @@ class Dialog(QDialog, Ui_Dialog):
             );"""
 
         cursor.execute(sql)
+
+
         PGcon.commit()
 
         # result = cursor.fetchone()

@@ -4,6 +4,7 @@ pyrcc4 resources.qrc -o resources_rc.py
 cd plugin/
 pyuic4 xabout_dialog_base.ui -o xabout_dialog.py
 pyuic4 dbsetup_dialog_base.ui -o dbsetup_dialog.py
+pyuic4 merge_dialog_base.ui -o merge_dialog.py
 
 
 rm -rf /home/sn/.qgis2/python/plugins/VetEpiGISgroup
