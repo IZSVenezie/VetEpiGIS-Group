@@ -100,6 +100,14 @@ class VetEpiGISgroup:
         # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
         # self.db.setDatabaseName(self.uri.database())
 
+        self.obrflds = ['gid', 'localid', 'code', 'largescale', 'disease', 'animalno', 'species',
+            'production', 'year', 'status', 'suspect', 'confirmation', 'expiration', 'notes',
+            'hrid', 'timestamp', 'grouping', 'geom']
+        self.poiflds = self.obrflds[0:3]
+        self.poiflds.append('activity')
+        self.poiflds.append('hrid')
+        self.poiflds.append('geom')
+
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -153,21 +161,58 @@ class VetEpiGISgroup:
 
 
     def mergeDB(self):
-        if self.dbtype == '':
-            self.iface.messageBar().pushMessage('Information', 'Setup central database connection!',
-                                                level=QgsMessageBar.INFO)
-            return
+        # if self.dbtype == '':
+        #     self.iface.messageBar().pushMessage('Information', 'Setup central database connection!',
+        #                                         level=QgsMessageBar.INFO)
+        #     return
 
         dlg = merge.Dialog()
-        dlg.setWindowTitle('Merge database')
+        dlg.setWindowTitle('Import database')
         # dlg.plugin_dir = self.plugin_dir
         x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
         y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
         dlg.move(x,y)
 
-        if dlg.exec_() == QDialog.Accepted:
-            k = 2
+        dlg.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/db_9A_36_38_21_25_9A.sqlite')
 
+        if dlg.exec_() == QDialog.Accepted:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+
+            idb = QSqlDatabase.addDatabase('QSPATIALITE')
+            idb.setDatabaseName(dlg.lineEdit.text())
+            idb.open()
+
+            tablst = idb.tables()
+
+     #        tablst = []
+     #        query = idb.exec_("SELECT name FROM sqlite_master WHERE type='table'")
+     #        while query.next():
+     #            tablst.append(query.value(0))
+     #
+     # QSqlDatabase.record()
+
+            s = ''
+            # for t in tablst:
+            #     s = s + ', ' + t
+
+            poi_tabs = []
+            outbrk_tabs = []
+
+            for tab in tablst:
+                rec = idb.record(tab)
+                flds = []
+                for i in xrange(rec.count()):
+                    flds.append(rec.fieldName(i))
+                if flds==self.poiflds:
+                    poi_tabs.append(tab)
+                if flds == self.obrflds:
+                    outbrk_tabs.append(tab)
+
+            idb.close()
+
+            self.iface.messageBar().pushMessage('Information', outbrk_tabs[0], level=QgsMessageBar.INFO)
+
+            QApplication.restoreOverrideCursor()
 
 
     def setupDB(self):
