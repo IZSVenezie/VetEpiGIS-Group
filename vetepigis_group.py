@@ -196,13 +196,16 @@ class VetEpiGISgroup:
             opointn = 0
             oarean = 0
             sqlinup = ''
+            tabs = ''
             for tab in tablst:
                 rec = idb.record(tab)
                 flds = []
                 for i in xrange(rec.count()):
                     flds.append(rec.fieldName(i))
+
                 if flds==self.poiflds:
                     # poi_tabs.append(tab)
+                    tabs = tabs + ', ' + tab
                     poin += 1
                     q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s' % tab)
                     while q.next():
@@ -210,6 +213,7 @@ class VetEpiGISgroup:
                             % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
 
                 if flds == self.obrflds:
+                    tabs = tabs + ', ' + tab
                     q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s' % tab)
                     while q.next():
                         g = q.value(16)
@@ -239,7 +243,7 @@ class VetEpiGISgroup:
 
                     # outbrk_tabs.append(tab)
 
-                    # self.iface.messageBar().pushMessage('Information', isql, level=QgsMessageBar.INFO)
+                    self.iface.messageBar().pushMessage('Information', tabs, level=QgsMessageBar.INFO)
 
             idb.close()
 
@@ -392,6 +396,26 @@ class VetEpiGISgroup:
                       geom = s.geom
                     from opointtmp as s where t.hrid = s.hrid;
                 """
+
+            if poin>0:
+                sqlinup = sqlinup + """
+                    insert into pois (localid, code, activity, hrid, geom)
+                    select
+                      poistmp.localid,
+                      poistmp.code,
+                      poistmp.activity,
+                      poistmp.hrid,
+                      poistmp.geom
+                    from pois right join poistmp on pois.hrid = poistmp.hrid where pois.hrid is null;
+                    update pois as t
+                    set localid = s.localid,
+                      code = s.code,
+                      activity = s.activity,
+                      hrid = s.hrid,
+                      geom = s.geom
+                    from poistmp as s where t.hrid = s.hrid;
+                """
+
 
             dsql = "DROP TABLE oareatmp, opointtmp, poistmp;"
 
