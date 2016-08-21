@@ -184,13 +184,6 @@ class VetEpiGISgroup:
 
             tablst = idb.tables()
 
-     #        tablst = []
-     #        query = idb.exec_("SELECT name FROM sqlite_master WHERE type='table'")
-     #        while query.next():
-     #            tablst.append(query.value(0))
-     #
-     # QSqlDatabase.record()
-
             s = ''
             # for t in tablst:
             #     s = s + ', ' + t
@@ -199,6 +192,10 @@ class VetEpiGISgroup:
             # outbrk_tabs = []
             isql = ''
             # geom = ''
+            poin = 0
+            opointn = 0
+            oarean = 0
+            sqlinup = ''
             for tab in tablst:
                 rec = idb.record(tab)
                 flds = []
@@ -206,6 +203,7 @@ class VetEpiGISgroup:
                     flds.append(rec.fieldName(i))
                 if flds==self.poiflds:
                     # poi_tabs.append(tab)
+                    poin += 1
                     q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s' % tab)
                     while q.next():
                         isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
@@ -215,9 +213,12 @@ class VetEpiGISgroup:
                     q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s' % tab)
                     while q.next():
                         g = q.value(16)
-                        t = 'opointtmp'
                         if g.find('POINT(')==-1:
                             t = 'oareatmp'
+                            oarean += 1
+                        else:
+                            t = 'opointtmp'
+                            opointn += 1
 
                         try:
                             v1 = int(q.value(4))
@@ -241,8 +242,6 @@ class VetEpiGISgroup:
                     # self.iface.messageBar().pushMessage('Information', isql, level=QgsMessageBar.INFO)
 
             idb.close()
-
-            #
 
             # if self.dbtype == 'postgis':
             csql = """
@@ -308,13 +307,99 @@ class VetEpiGISgroup:
                 );
             """
 
-            sql = csql + isql
+            if oarean>0:
+                sqlinup = sqlinup + """
+                    insert into outbreaks_area (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
+                    select
+                      oareatmp.localid,
+                      oareatmp.code,
+                      oareatmp.largescale,
+                      oareatmp.disease,
+                      oareatmp.animalno,
+                      oareatmp.species,
+                      oareatmp.production,
+                      oareatmp.year,
+                      oareatmp.status,
+                      oareatmp.suspect,
+                      oareatmp.confirmation,
+                      oareatmp.expiration,
+                      oareatmp.notes,
+                      oareatmp.hrid,
+                      oareatmp."timestamp",
+                      oareatmp.grouping,
+                      oareatmp.geom
+                    from outbreaks_area right join oareatmp on outbreaks_area.hrid = oareatmp.hrid where outbreaks_area.hrid is null;
+                    update outbreaks_area as t
+                    set localid = s.localid,
+                      code = s.code,
+                      largescale = s.largescale,
+                      disease = s.disease,
+                      animalno = s.animalno,
+                      species = s.species,
+                      production = s.production,
+                      year = s.year,
+                      status = s.status,
+                      suspect = s.suspect,
+                      confirmation = s.confirmation,
+                      expiration = s.expiration,
+                      notes = s.notes,
+                      hrid = s.hrid,
+                      "timestamp" = s."timestamp",
+                      grouping = s.grouping,
+                      geom = s.geom
+                    from oareatmp as s where t.hrid = s.hrid;
+                """
+
+            if opointn>0:
+                sqlinup = sqlinup + """
+                    insert into outbreaks_point (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
+                    select
+                      opointtmp.localid,
+                      opointtmp.code,
+                      opointtmp.largescale,
+                      opointtmp.disease,
+                      opointtmp.animalno,
+                      opointtmp.species,
+                      opointtmp.production,
+                      opointtmp.year,
+                      opointtmp.status,
+                      opointtmp.suspect,
+                      opointtmp.confirmation,
+                      opointtmp.expiration,
+                      opointtmp.notes,
+                      opointtmp.hrid,
+                      opointtmp."timestamp",
+                      opointtmp.grouping,
+                      opointtmp.geom
+                    from outbreaks_point right join opointtmp on outbreaks_point.hrid = opointtmp.hrid where outbreaks_point.hrid is null;
+                    update outbreaks_point as t
+                    set localid = s.localid,
+                      code = s.code,
+                      largescale = s.largescale,
+                      disease = s.disease,
+                      animalno = s.animalno,
+                      species = s.species,
+                      production = s.production,
+                      year = s.year,
+                      status = s.status,
+                      suspect = s.suspect,
+                      confirmation = s.confirmation,
+                      expiration = s.expiration,
+                      notes = s.notes,
+                      hrid = s.hrid,
+                      "timestamp" = s."timestamp",
+                      grouping = s.grouping,
+                      geom = s.geom
+                    from opointtmp as s where t.hrid = s.hrid;
+                """
+
+            dsql = "DROP TABLE oareatmp, opointtmp, poistmp;"
+
+            sql = csql + isql + sqlinup + dsql
 
             cursor = self.PGcon.cursor()
             cursor.execute(sql)
             self.PGcon.commit()
-
-            # dsql = "DROP TABLE poistmp;"
 
             QApplication.restoreOverrideCursor()
 
