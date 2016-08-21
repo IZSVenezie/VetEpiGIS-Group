@@ -219,27 +219,22 @@ class VetEpiGISgroup:
                         if g.find('POINT(')==-1:
                             t = 'oareatmp'
 
+                        try:
+                            v1 = int(q.value(4))
+                        except ValueError:
+                            v1 = 'NULL'
+
+                        try:
+                            v2 = int(q.value(7))
+                        except ValueError:
+                            v2 = 'NULL'
+
                         isql = isql + """
                             insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
                             values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                        """ % (t,
-                               q.value(0),
-                               q.value(1),
-                               q.value(2),
-                               q.value(3),
-                               q.value(4),
-                               q.value(5),
-                               q.value(6),
-                               q.value(7),
-                               q.value(8),
-                               q.value(9),
-                               q.value(10),
-                               q.value(11),
-                               q.value(12),
-                               q.value(13),
-                               q.value(14),
-                               q.value(15),
-                               g)
+                        """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
+                               v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                               q.value(12), q.value(13), q.value(14), q.value(15), g)
 
                     # outbrk_tabs.append(tab)
 
@@ -296,7 +291,7 @@ class VetEpiGISgroup:
                   geom geometry,
                   CONSTRAINT oareatmp_pkey PRIMARY KEY (gid),
                   CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geom IS NULL),
+                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
                   CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
                 );
                 CREATE TABLE poistmp (

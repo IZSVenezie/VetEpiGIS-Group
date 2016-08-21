@@ -166,7 +166,7 @@ class Dialog(QDialog, Ui_Dialog):
               geom geometry,
               CONSTRAINT outbreaks_area_pkey PRIMARY KEY (gid),
               CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geom IS NULL),
+              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
               CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
             );
             CREATE TABLE pois (
