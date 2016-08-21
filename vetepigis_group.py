@@ -195,22 +195,131 @@ class VetEpiGISgroup:
             # for t in tablst:
             #     s = s + ', ' + t
 
-            poi_tabs = []
-            outbrk_tabs = []
-
+            # poi_tabs = []
+            # outbrk_tabs = []
+            isql = ''
+            # geom = ''
             for tab in tablst:
                 rec = idb.record(tab)
                 flds = []
                 for i in xrange(rec.count()):
                     flds.append(rec.fieldName(i))
                 if flds==self.poiflds:
-                    poi_tabs.append(tab)
+                    # poi_tabs.append(tab)
+                    q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s' % tab)
+                    while q.next():
+                        isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
+                            % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+
                 if flds == self.obrflds:
-                    outbrk_tabs.append(tab)
+                    q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s' % tab)
+                    while q.next():
+                        g = q.value(16)
+                        t = 'opointtmp'
+                        if g.find('POINT(')==-1:
+                            t = 'oareatmp'
+
+                        isql = isql + """
+                            insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
+                            values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                        """ % (t,
+                               q.value(0),
+                               q.value(1),
+                               q.value(2),
+                               q.value(3),
+                               q.value(4),
+                               q.value(5),
+                               q.value(6),
+                               q.value(7),
+                               q.value(8),
+                               q.value(9),
+                               q.value(10),
+                               q.value(11),
+                               q.value(12),
+                               q.value(13),
+                               q.value(14),
+                               q.value(15),
+                               g)
+
+                    # outbrk_tabs.append(tab)
+
+                    # self.iface.messageBar().pushMessage('Information', isql, level=QgsMessageBar.INFO)
 
             idb.close()
 
-            self.iface.messageBar().pushMessage('Information', outbrk_tabs[0], level=QgsMessageBar.INFO)
+            #
+
+            # if self.dbtype == 'postgis':
+            csql = """
+                CREATE TABLE opointtmp (
+                  gid serial NOT NULL,
+                  localid character varying(254),
+                  code character varying(254),
+                  largescale character varying(254),
+                  disease character varying(254),
+                  animalno integer,
+                  species character varying(254),
+                  production character varying(254),
+                  year integer,
+                  status character varying(254),
+                  suspect character varying(254),
+                  confirmation character varying(254),
+                  expiration character varying(254),
+                  notes character varying(254),
+                  hrid character varying(254),
+                  timestamp character varying(254),
+                  grouping character varying(254),
+                  geom geometry,
+                  CONSTRAINT opointtmp_pkey PRIMARY KEY (gid),
+                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE oareatmp (
+                  gid serial NOT NULL,
+                  localid character varying(254),
+                  code character varying(254),
+                  largescale character varying(254),
+                  disease character varying(254),
+                  animalno integer,
+                  species character varying(254),
+                  production character varying(254),
+                  year integer,
+                  status character varying(254),
+                  suspect character varying(254),
+                  confirmation character varying(254),
+                  expiration character varying(254),
+                  notes character varying(254),
+                  hrid character varying(254),
+                  timestamp character varying(254),
+                  grouping character varying(254),
+                  geom geometry,
+                  CONSTRAINT oareatmp_pkey PRIMARY KEY (gid),
+                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geom IS NULL),
+                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE poistmp (
+                  gid serial NOT NULL,
+                  localid character varying(254),
+                  code character varying(254),
+                  activity character varying(254),
+                  hrid character varying(254),
+                  geom geometry,
+                  CONSTRAINT poistmp_pkey PRIMARY KEY (gid),
+                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+            """
+
+            sql = csql + isql
+
+            cursor = self.PGcon.cursor()
+            cursor.execute(sql)
+            self.PGcon.commit()
+
+            # dsql = "DROP TABLE poistmp;"
 
             QApplication.restoreOverrideCursor()
 
