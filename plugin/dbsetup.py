@@ -199,6 +199,35 @@ class Dialog(QDialog, Ui_Dialog):
               CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
               CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
             );
+            CREATE TABLE zones (
+              gid serial NOT NULL,
+              localid character varying(254),
+              code character varying(254),
+              disease character varying(254),
+              zonetype character varying(254),
+              subpopulation character varying(254),
+              validity_start character varying(254),
+              validity_end character varying(254),
+              legal_framework character varying(254),
+              competent_authority character varying(254),
+              biosecurity_measures character varying(254),
+              control_of_vectors character varying(254),
+              control_of_wildlife_reservoir character varying(254),
+              modified_stamping_out character varying(254),
+              movement_restriction character varying(254),
+              stamping_out character varying(254),
+              surveillance character varying(254),
+              vaccination character varying(254),
+              other_measure character varying(254),
+              related character varying(254),
+              hrid character varying(254),
+              timestamp character varying(254),
+              geom geometry,
+              CONSTRAINT zones_pkey PRIMARY KEY (gid),
+              CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+              CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+            );
             CREATE TABLE xdiseases (
               id serial NOT NULL,
               disease character varying(254),

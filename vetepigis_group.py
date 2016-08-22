@@ -201,6 +201,9 @@ class VetEpiGISgroup:
             bflds.append('geom')
             buffn = 0
 
+            zflds = ['localid', 'code', 'disease', 'zonetype', 'subpopulation', 'validity_start', 'validity_end', 'legal_framework', 'competent_authority', 'biosecurity_measures', 'control_of_vectors', 'control_of_wildlife_reservoir', 'modified_stamping_out', 'movement_restriction', 'stamping_out', 'surveillance', 'vaccination', 'other_measure', 'related', 'hrid', 'timestamp', 'geom']
+            zonen = 0
+
             for tab in tablst:
                 rec = idb.record(tab)
                 flds = []
@@ -264,6 +267,14 @@ class VetEpiGISgroup:
                                v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
                                q.value(12), q.value(13), q.value(14), q.value(15))
 
+                if flds == zflds:
+                    zonen += 1
+                    q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                    while q.next():
+                        isql = isql + """
+                            insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                            values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                        """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21))
 
             # self.iface.messageBar().pushMessage('Information', str(buffn), level=QgsMessageBar.INFO)
 
@@ -350,6 +361,35 @@ class VetEpiGISgroup:
                   timestamp character varying(254),
                   geom geometry,
                   CONSTRAINT bufferstmp_pkey PRIMARY KEY (gid),
+                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE zonestmp (
+                  gid serial NOT NULL,
+                  localid character varying(254),
+                  code character varying(254),
+                  disease character varying(254),
+                  zonetype character varying(254),
+                  subpopulation character varying(254),
+                  validity_start character varying(254),
+                  validity_end character varying(254),
+                  legal_framework character varying(254),
+                  competent_authority character varying(254),
+                  biosecurity_measures character varying(254),
+                  control_of_vectors character varying(254),
+                  control_of_wildlife_reservoir character varying(254),
+                  modified_stamping_out character varying(254),
+                  movement_restriction character varying(254),
+                  stamping_out character varying(254),
+                  surveillance character varying(254),
+                  vaccination character varying(254),
+                  other_measure character varying(254),
+                  related character varying(254),
+                  hrid character varying(254),
+                  timestamp character varying(254),
+                  geom geometry,
+                  CONSTRAINT zonestmp_pkey PRIMARY KEY (gid),
                   CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
                   CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
                   CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
@@ -502,7 +542,60 @@ class VetEpiGISgroup:
                     from bufferstmp as s where t.hrid = s.hrid;
                 """
 
-            dsql = "DROP TABLE oareatmp, opointtmp, poistmp, bufferstmp;"
+            if zonen>0:
+                sqlinup = sqlinup + """
+                    insert into zones (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                    select
+                      zonestmp.localid,
+                      zonestmp.code,
+                      zonestmp.disease,
+                      zonestmp.zonetype,
+                      zonestmp.subpopulation,
+                      zonestmp.validity_start,
+                      zonestmp.validity_end,
+                      zonestmp.legal_framework,
+                      zonestmp.competent_authority,
+                      zonestmp.biosecurity_measures,
+                      zonestmp.control_of_vectors,
+                      zonestmp.control_of_wildlife_reservoir,
+                      zonestmp.modified_stamping_out,
+                      zonestmp.movement_restriction,
+                      zonestmp.stamping_out,
+                      zonestmp.surveillance,
+                      zonestmp.vaccination,
+                      zonestmp.other_measure,
+                      zonestmp.related,
+                      zonestmp.hrid,
+                      zonestmp.timestamp,
+                      zonestmp.geom
+                    from zones right join zonestmp on zones.hrid = zonestmp.hrid where zones.hrid is null;
+                    update zones as t
+                    set localid = s.localid,
+                      code = s.code,
+                      disease = s.disease,
+                      zonetype = s.zonetype,
+                      subpopulation = s.subpopulation,
+                      validity_start = s.validity_start,
+                      validity_end = s.validity_end,
+                      legal_framework = s.legal_framework,
+                      competent_authority = s.competent_authority,
+                      biosecurity_measures = s.biosecurity_measures,
+                      control_of_vectors = s.control_of_vectors,
+                      control_of_wildlife_reservoir = s.control_of_wildlife_reservoir,
+                      modified_stamping_out = s.modified_stamping_out,
+                      movement_restriction = s.movement_restriction,
+                      stamping_out = s.stamping_out,
+                      surveillance = s.surveillance,
+                      vaccination = s.vaccination,
+                      other_measure = s.other_measure,
+                      related = s.related,
+                      hrid = s.hrid,
+                      timestamp = s.timestamp,
+                      geom = s.geom
+                    from zonestmp as s where t.hrid = s.hrid;
+                """
+
+            dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
 
             sql = csql + isql + sqlinup + dsql
 
