@@ -315,190 +315,86 @@ class VetEpiGISgroup:
                 """)
                 rs = cur.execute("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
 
+                # self.iface.messageBar().pushMessage('Information', 'idb: %s' % idb.isOpen(),
+                #                                     level=QgsMessageBar.INFO)
+                # /home/sn/Downloads/install/src/qgis-2.16.1/python/plugins/processing/tools/spatialite.py
+
+                for tab in tablst:
+                    rec = idb.record(tab)
+                    flds = []
+                    # s = ''
+                    for i in xrange(rec.count()):
+                        flds.append(rec.fieldName(i))
+                        # s = s + rec.fieldName(i)
+
+                    if flds==self.poiflds:
+                        q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            sql = "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
+                                % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+                            rs = cur.execute(sql)
+
+                    if flds == self.obrflds:
+                        q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            g = q.value(16)
+                            if g.find('POINT(')==-1:
+                                t = 'oareatmp'
+                            else:
+                                t = 'opointtmp'
+
+                            try:
+                                v1 = int(q.value(4))
+                            except ValueError:
+                                v1 = 'NULL'
+
+                            try:
+                                v2 = int(q.value(7))
+                            except ValueError:
+                                v2 = 'NULL'
+
+                            sql = """
+                                insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                            """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
+                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                                   q.value(12), q.value(13), q.value(14), q.value(15), g)
+                            rs = cur.execute(sql)
+
+                    if flds == bflds:
+                        q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            try:
+                                v1 = int(q.value(4))
+                            except ValueError:
+                                v1 = 'NULL'
+
+                            try:
+                                v2 = int(q.value(7))
+                            except ValueError:
+                                v2 = 'NULL'
+
+                            sql = """
+                                insert into bufferstmp (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                            """ % (q.value(0), q.value(1), q.value(2), q.value(3),
+                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                                   q.value(12), q.value(13), q.value(14), q.value(15))
+                            rs = cur.execute(sql)
+
+                    if flds == zflds:
+                        q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            sql = """
+                                insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                                values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                            """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21))
+                            rs = cur.execute(sql)
+
+
                 conn.commit()
                 rs.close()
                 conn.close()
-
-                self.iface.messageBar().pushMessage('Information', 'idb: %s' % idb.isOpen(),
-                                                    level=QgsMessageBar.INFO)
-# /home/sn/Downloads/install/src/qgis-2.16.1/python/plugins/processing/tools/spatialite.py
-                # q = self.db.exec_("""
-                #     CREATE TABLE opointtmp (
-                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                #       localid text,
-                #       code text,
-                #       largescale text,
-                #       disease text,
-                #       animalno numeric,
-                #       species text,
-                #       production text,
-                #       year numeric,
-                #       status text,
-                #       suspect text,
-                #       confirmation text,
-                #       expiration text,
-                #       notes text,
-                #       hrid text,
-                #       timestamp text,
-                #       grouping text
-                #     );
-                # """)
-                # q = self.db.exec_("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
-                # q = self.db.exec_("""
-                #     CREATE TABLE oareatmp (
-                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                #       localid text,
-                #       code text,
-                #       largescale text,
-                #       disease text,
-                #       animalno numeric,
-                #       species text,
-                #       production text,
-                #       year numeric,
-                #       status text,
-                #       suspect text,
-                #       confirmation text,
-                #       expiration text,
-                #       notes text,
-                #       hrid text,
-                #       timestamp text,
-                #       grouping text
-                #     );
-                # """)
-                # q = self.db.exec_("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-                # q = self.db.exec_("""
-                #     CREATE TABLE poistmp (
-                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                #       localid text,
-                #       code text,
-                #       activity text,
-                #       hrid text
-                #     );
-                # """)
-                # q = self.db.exec_("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
-                # q = self.db.exec_("""
-                #     CREATE TABLE bufferstmp (
-                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                #       localid text,
-                #       code text,
-                #       largescale text,
-                #       disease text,
-                #       animalno numeric,
-                #       species text,
-                #       production text,
-                #       year numeric,
-                #       status text,
-                #       suspect text,
-                #       confirmation text,
-                #       expiration text,
-                #       notes text,
-                #       hrid text,
-                #       timestamp text
-                #     );
-                # """)
-                # q = self.db.exec_("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-                # q = self.db.exec_("""
-                #     CREATE TABLE zonestmp (
-                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                #       localid text,
-                #       code text,
-                #       disease text,
-                #       zonetype text,
-                #       subpopulation text,
-                #       validity_start text,
-                #       validity_end text,
-                #       legal_framework text,
-                #       competent_authority text,
-                #       biosecurity_measures text,
-                #       control_of_vectors text,
-                #       control_of_wildlife_reservoir text,
-                #       modified_stamping_out text,
-                #       movement_restriction text,
-                #       stamping_out text,
-                #       surveillance text,
-                #       vaccination text,
-                #       other_measure text,
-                #       related text,
-                #       hrid text,
-                #       timestamp text
-                #     );
-                # """)
-                # q = self.db.exec_("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-
-                # for tab in tablst:
-                #     rec = idb.record(tab)
-                #     flds = []
-                #     # s = ''
-                #     for i in xrange(rec.count()):
-                #         flds.append(rec.fieldName(i))
-                #         # s = s + rec.fieldName(i)
-
-                    # if flds==self.poiflds:
-                    #     q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
-                    #     while q.next():
-                    #         sql = "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
-                    #             % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
-                    #         qb = self.db.exec_(sql)
-                            # self.iface.messageBar().pushMessage('Information', '%s' % sql, level=QgsMessageBar.INFO)
-
-                #     if flds == self.obrflds:
-                #         q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
-                #         while q.next():
-                #             g = q.value(16)
-                #             if g.find('POINT(')==-1:
-                #                 t = 'oareatmp'
-                #             else:
-                #                 t = 'opointtmp'
-                #
-                #             try:
-                #                 v1 = int(q.value(4))
-                #             except ValueError:
-                #                 v1 = 'NULL'
-                #
-                #             try:
-                #                 v2 = int(q.value(7))
-                #             except ValueError:
-                #                 v2 = 'NULL'
-                #
-                #             qb = self.db.exec_("""
-                #                 insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
-                #                 values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                #             """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
-                #                    v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                #                    q.value(12), q.value(13), q.value(14), q.value(15), g))
-                #
-                #     if flds == bflds:
-                #         q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
-                #         while q.next():
-                #             try:
-                #                 v1 = int(q.value(4))
-                #             except ValueError:
-                #                 v1 = 'NULL'
-                #
-                #             try:
-                #                 v2 = int(q.value(7))
-                #             except ValueError:
-                #                 v2 = 'NULL'
-                #
-                #             qb = self.db.exec_("""
-                #                 insert into bufferstmp (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
-                #                 values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                #             """ % (q.value(0), q.value(1), q.value(2), q.value(3),
-                #                    v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                #                    q.value(12), q.value(13), q.value(14), q.value(15)))
-                #
-                #     if flds == zflds:
-                #         q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
-                #         while q.next():
-                #             qb = self.db.exec_("""
-                #                 insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
-                #                 values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                #             """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21)))
-                #
-
-                # self.db.close()
-
-
 
 
             if self.dbtype == 'postgis':
