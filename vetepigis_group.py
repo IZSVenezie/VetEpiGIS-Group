@@ -196,7 +196,11 @@ class VetEpiGISgroup:
             opointn = 0
             oarean = 0
             sqlinup = ''
-            tabs = ''
+            # tabs = ''
+            bflds = self.obrflds[0:16]
+            bflds.append('geom')
+            buffn = 0
+
             for tab in tablst:
                 rec = idb.record(tab)
                 flds = []
@@ -204,17 +208,15 @@ class VetEpiGISgroup:
                     flds.append(rec.fieldName(i))
 
                 if flds==self.poiflds:
-                    # poi_tabs.append(tab)
-                    tabs = tabs + ', ' + tab
                     poin += 1
-                    q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s' % tab)
+                    q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
                     while q.next():
                         isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
                             % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
 
                 if flds == self.obrflds:
-                    tabs = tabs + ', ' + tab
-                    q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s' % tab)
+                    # tabs = tabs + ', ' + tab
+                    q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
                     while q.next():
                         g = q.value(16)
                         if g.find('POINT(')==-1:
@@ -235,15 +237,35 @@ class VetEpiGISgroup:
                             v2 = 'NULL'
 
                         isql = isql + """
-                            insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
+                            insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
                             values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
                         """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
                                v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
                                q.value(12), q.value(13), q.value(14), q.value(15), g)
 
-                    # outbrk_tabs.append(tab)
+                if flds == bflds:
+                    buffn += 1
+                    q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                    while q.next():
+                        try:
+                            v1 = int(q.value(4))
+                        except ValueError:
+                            v1 = 'NULL'
 
-                    # self.iface.messageBar().pushMessage('Information', tabs, level=QgsMessageBar.INFO)
+                        try:
+                            v2 = int(q.value(7))
+                        except ValueError:
+                            v2 = 'NULL'
+
+                        isql = isql + """
+                            insert into bufferstmp (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                            values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                        """ % (q.value(0), q.value(1), q.value(2), q.value(3),
+                               v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                               q.value(12), q.value(13), q.value(14), q.value(15))
+
+
+            # self.iface.messageBar().pushMessage('Information', str(buffn), level=QgsMessageBar.INFO)
 
             idb.close()
 
@@ -309,11 +331,34 @@ class VetEpiGISgroup:
                   CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
                   CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
                 );
+                CREATE TABLE bufferstmp (
+                  gid serial NOT NULL,
+                  localid character varying(254),
+                  code character varying(254),
+                  largescale character varying(254),
+                  disease character varying(254),
+                  animalno integer,
+                  species character varying(254),
+                  production character varying(254),
+                  year integer,
+                  status character varying(254),
+                  suspect character varying(254),
+                  confirmation character varying(254),
+                  expiration character varying(254),
+                  notes character varying(254),
+                  hrid character varying(254),
+                  timestamp character varying(254),
+                  geom geometry,
+                  CONSTRAINT bufferstmp_pkey PRIMARY KEY (gid),
+                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
             """
 
             if oarean>0:
                 sqlinup = sqlinup + """
-                    insert into outbreaks_area (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
+                    insert into outbreaks_area (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
                     select
                       oareatmp.localid,
                       oareatmp.code,
@@ -329,7 +374,7 @@ class VetEpiGISgroup:
                       oareatmp.expiration,
                       oareatmp.notes,
                       oareatmp.hrid,
-                      oareatmp."timestamp",
+                      oareatmp.timestamp,
                       oareatmp.grouping,
                       oareatmp.geom
                     from outbreaks_area right join oareatmp on outbreaks_area.hrid = oareatmp.hrid where outbreaks_area.hrid is null;
@@ -348,7 +393,7 @@ class VetEpiGISgroup:
                       expiration = s.expiration,
                       notes = s.notes,
                       hrid = s.hrid,
-                      "timestamp" = s."timestamp",
+                      timestamp = s.timestamp,
                       grouping = s.grouping,
                       geom = s.geom
                     from oareatmp as s where t.hrid = s.hrid;
@@ -356,7 +401,7 @@ class VetEpiGISgroup:
 
             if opointn>0:
                 sqlinup = sqlinup + """
-                    insert into outbreaks_point (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, "timestamp", grouping, geom)
+                    insert into outbreaks_point (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
                     select
                       opointtmp.localid,
                       opointtmp.code,
@@ -372,7 +417,7 @@ class VetEpiGISgroup:
                       opointtmp.expiration,
                       opointtmp.notes,
                       opointtmp.hrid,
-                      opointtmp."timestamp",
+                      opointtmp.timestamp,
                       opointtmp.grouping,
                       opointtmp.geom
                     from outbreaks_point right join opointtmp on outbreaks_point.hrid = opointtmp.hrid where outbreaks_point.hrid is null;
@@ -391,7 +436,7 @@ class VetEpiGISgroup:
                       expiration = s.expiration,
                       notes = s.notes,
                       hrid = s.hrid,
-                      "timestamp" = s."timestamp",
+                      timestamp = s.timestamp,
                       grouping = s.grouping,
                       geom = s.geom
                     from opointtmp as s where t.hrid = s.hrid;
@@ -416,8 +461,48 @@ class VetEpiGISgroup:
                     from poistmp as s where t.hrid = s.hrid;
                 """
 
+            if buffn>0:
+                sqlinup = sqlinup + """
+                    insert into buffers (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                    select
+                      bufferstmp.localid,
+                      bufferstmp.code,
+                      bufferstmp.largescale,
+                      bufferstmp.disease,
+                      bufferstmp.animalno,
+                      bufferstmp.species,
+                      bufferstmp.production,
+                      bufferstmp.year,
+                      bufferstmp.status,
+                      bufferstmp.suspect,
+                      bufferstmp.confirmation,
+                      bufferstmp.expiration,
+                      bufferstmp.notes,
+                      bufferstmp.hrid,
+                      bufferstmp.timestamp,
+                      bufferstmp.geom
+                    from buffers right join bufferstmp on buffers.hrid = bufferstmp.hrid where buffers.hrid is null;
+                    update buffers as t
+                    set localid = s.localid,
+                      code = s.code,
+                      largescale = s.largescale,
+                      disease = s.disease,
+                      animalno = s.animalno,
+                      species = s.species,
+                      production = s.production,
+                      year = s.year,
+                      status = s.status,
+                      suspect = s.suspect,
+                      confirmation = s.confirmation,
+                      expiration = s.expiration,
+                      notes = s.notes,
+                      hrid = s.hrid,
+                      timestamp = s.timestamp,
+                      geom = s.geom
+                    from bufferstmp as s where t.hrid = s.hrid;
+                """
 
-            dsql = "DROP TABLE oareatmp, opointtmp, poistmp;"
+            dsql = "DROP TABLE oareatmp, opointtmp, poistmp, bufferstmp;"
 
             sql = csql + isql + sqlinup + dsql
 

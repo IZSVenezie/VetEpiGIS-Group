@@ -115,7 +115,7 @@ class Dialog(QDialog, Ui_Dialog):
 
         cursor = PGcon.cursor()
         sql = """
-            DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area;
+            DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area, buffers;
             CREATE TABLE outbreaks_point (
               gid serial NOT NULL,
               localid character varying(254),
@@ -174,6 +174,29 @@ class Dialog(QDialog, Ui_Dialog):
               CONSTRAINT pois_pkey PRIMARY KEY (gid),
               CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
               CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+              CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+            );
+            CREATE TABLE buffers (
+              gid serial NOT NULL,
+              localid character varying(254),
+              code character varying(254),
+              largescale character varying(254),
+              disease character varying(254),
+              animalno integer,
+              species character varying(254),
+              production character varying(254),
+              year integer,
+              status character varying(254),
+              suspect character varying(254),
+              confirmation character varying(254),
+              expiration character varying(254),
+              notes character varying(254),
+              hrid character varying(254),
+              timestamp character varying(254),
+              geom geometry,
+              CONSTRAINT buffers_pkey PRIMARY KEY (gid),
+              CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+              CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
               CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
             );
             CREATE TABLE xdiseases (
