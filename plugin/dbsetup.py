@@ -58,6 +58,8 @@ class Dialog(QDialog, Ui_Dialog):
 
         self.commandLinkButton_2.clicked.connect(self.createPGtables)
 
+        self.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/c.sqlite')
+
 
     def dbSource(self):
         dbpath = QFileDialog.getOpenFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
@@ -92,6 +94,120 @@ class Dialog(QDialog, Ui_Dialog):
                 shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbpath)
                 self.lineEdit.setText(dbpath)
 
+                db = QSqlDatabase.addDatabase('QSPATIALITE')
+                db.setDatabaseName(dbpath)
+                db.open()
+                query = db.exec_(
+                """
+                    CREATE TABLE outbreaks_point (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text,
+                      grouping text
+                    );
+                """
+                )
+                query = db.exec_("SELECT AddGeometryColumn('outbreaks_point', 'geom', 4326, 'POINT', 'XY');")
+                query = db.exec_(
+                """
+                    CREATE TABLE outbreaks_area (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text,
+                      grouping text
+                    );
+                """
+                )
+                query = db.exec_("SELECT AddGeometryColumn('outbreaks_area', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                query = db.exec_(
+                """
+                CREATE TABLE pois (
+                  gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                  localid text,
+                  code text,
+                  activity text,
+                  hrid text
+                );
+                """)
+                query = db.exec_("SELECT AddGeometryColumn('pois', 'geom', 4326, 'POINT', 'XY');")
+                query = db.exec_(
+                """
+                CREATE TABLE buffers (
+                  gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                  localid text,
+                  code text,
+                  largescale text,
+                  disease text,
+                  animalno numeric,
+                  species text,
+                  production text,
+                  year numeric,
+                  status text,
+                  suspect text,
+                  confirmation text,
+                  expiration text,
+                  notes text,
+                  hrid text,
+                  timestamp text
+                );
+                """)
+                query = db.exec_("SELECT AddGeometryColumn('buffers', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                query = db.exec_(
+                """
+                CREATE TABLE zones (
+                  gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                  localid text,
+                  code text,
+                  disease text,
+                  zonetype text,
+                  subpopulation text,
+                  validity_start text,
+                  validity_end text,
+                  legal_framework text,
+                  competent_authority text,
+                  biosecurity_measures text,
+                  control_of_vectors text,
+                  control_of_wildlife_reservoir text,
+                  modified_stamping_out text,
+                  movement_restriction text,
+                  stamping_out text,
+                  surveillance text,
+                  vaccination text,
+                  other_measure text,
+                  related text,
+                  hrid text,
+                  timestamp text
+                );
+                """)
+                query = db.exec_("SELECT AddGeometryColumn('zones', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                db.close()
+
             QApplication.restoreOverrideCursor()
         except IOError:
             return False
@@ -115,7 +231,7 @@ class Dialog(QDialog, Ui_Dialog):
 
         cursor = PGcon.cursor()
         sql = """
-            DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area, buffers;
+            DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area, buffers, zones;
             CREATE TABLE outbreaks_point (
               gid serial NOT NULL,
               localid character varying(254),
@@ -256,10 +372,11 @@ class Dialog(QDialog, Ui_Dialog):
 
         PGcon.commit()
 
-        uri = QgsDataSourceURI()
-        uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
+        # uri = QgsDataSourceURI()
+        # uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
         db = QSqlDatabase.addDatabase('QSPATIALITE')
-        db.setDatabaseName(uri.database())
+        # db.setDatabaseName(uri.database())
+        db.setDatabaseName(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
 
         if not db.open():
             db.open()

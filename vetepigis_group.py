@@ -44,6 +44,9 @@ import psycopg2.extensions
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
+from pyspatialite import dbapi2 as spdb
+
+
 from uuid import getnode as get_mac
 
 class VetEpiGISgroup:
@@ -94,7 +97,10 @@ class VetEpiGISgroup:
         #     shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
         #
         self.dbtype = ''
-        self.uri = QgsDataSourceURI()
+        self.dbpath = ''
+
+        # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
+        # self.uri = QgsDataSourceURI()
         # self.uri.setDatabase(dbuidpath)
         #
         # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
@@ -178,430 +184,729 @@ class VetEpiGISgroup:
         if dlg.exec_() == QDialog.Accepted:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
-            idb = QSqlDatabase.addDatabase('QSPATIALITE')
-            idb.setDatabaseName(dlg.lineEdit.text())
-            idb.open()
+            ipath = dlg.lineEdit.text()
 
-            tablst = idb.tables()
-
-            s = ''
-            # for t in tablst:
-            #     s = s + ', ' + t
-
-            # poi_tabs = []
-            # outbrk_tabs = []
             isql = ''
-            # geom = ''
-            poin = 0
-            opointn = 0
-            oarean = 0
             sqlinup = ''
-            # tabs = ''
             bflds = self.obrflds[0:16]
             bflds.append('geom')
-            buffn = 0
-
             zflds = ['localid', 'code', 'disease', 'zonetype', 'subpopulation', 'validity_start', 'validity_end', 'legal_framework', 'competent_authority', 'biosecurity_measures', 'control_of_vectors', 'control_of_wildlife_reservoir', 'modified_stamping_out', 'movement_restriction', 'stamping_out', 'surveillance', 'vaccination', 'other_measure', 'related', 'hrid', 'timestamp', 'geom']
-            zonen = 0
+            poin = opointn = oarean = zonen = buffn = 0
 
-            for tab in tablst:
-                rec = idb.record(tab)
-                flds = []
-                for i in xrange(rec.count()):
-                    flds.append(rec.fieldName(i))
+            if self.dbtype == 'spatialite':
+                # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
+                # self.db.setDatabaseName(self.dbpath)
+                # if not self.db.open():
+                #     self.db.open()
+                # self.iface.messageBar().pushMessage('Information', 'self.db: %s' % self.db.isOpen(),
+                #                                     level=QgsMessageBar.INFO)
 
-                if flds==self.poiflds:
-                    poin += 1
-                    q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
-                    while q.next():
-                        isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
-                            % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb.setDatabaseName(ipath)
+                if not idb.open():
+                    idb.open()
+                tablst = idb.tables()
 
-                if flds == self.obrflds:
-                    # tabs = tabs + ', ' + tab
-                    q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
-                    while q.next():
-                        g = q.value(16)
-                        if g.find('POINT(')==-1:
-                            t = 'oareatmp'
-                            oarean += 1
-                        else:
-                            t = 'opointtmp'
-                            opointn += 1
+                # self.iface.messageBar().pushMessage('Information', self.ipath, level=QgsMessageBar.INFO)
+                # self.iface.messageBar().pushMessage('Information', self.dbpath, level=QgsMessageBar.INFO)
 
-                        try:
-                            v1 = int(q.value(4))
-                        except ValueError:
-                            v1 = 'NULL'
+                conn = spdb.connect(self.dbpath)
+                cur = conn.cursor()
+                rs = cur.execute("""
+                    CREATE TABLE opointtmp (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text,
+                      grouping text
+                    );
+                """)
+                rs = cur.execute("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
+                rs = cur.execute("""
+                    CREATE TABLE oareatmp (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text,
+                      grouping text
+                    );
+                    """)
+                rs = cur.execute("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                rs = cur.execute("""
+                    CREATE TABLE poistmp (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      activity text,
+                      hrid text
+                    );
+                """)
+                rs = cur.execute("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
+                rs = cur.execute("""
+                    CREATE TABLE bufferstmp (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text
+                    );
+                """)
+                rs = cur.execute("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                rs = cur.execute("""
+                    CREATE TABLE zonestmp (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      disease text,
+                      zonetype text,
+                      subpopulation text,
+                      validity_start text,
+                      validity_end text,
+                      legal_framework text,
+                      competent_authority text,
+                      biosecurity_measures text,
+                      control_of_vectors text,
+                      control_of_wildlife_reservoir text,
+                      modified_stamping_out text,
+                      movement_restriction text,
+                      stamping_out text,
+                      surveillance text,
+                      vaccination text,
+                      other_measure text,
+                      related text,
+                      hrid text,
+                      timestamp text
+                    );
+                """)
+                rs = cur.execute("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
 
-                        try:
-                            v2 = int(q.value(7))
-                        except ValueError:
-                            v2 = 'NULL'
+                conn.commit()
+                rs.close()
+                conn.close()
 
-                        isql = isql + """
-                            insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
-                            values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                        """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
-                               v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                               q.value(12), q.value(13), q.value(14), q.value(15), g)
+                self.iface.messageBar().pushMessage('Information', 'idb: %s' % idb.isOpen(),
+                                                    level=QgsMessageBar.INFO)
+# /home/sn/Downloads/install/src/qgis-2.16.1/python/plugins/processing/tools/spatialite.py
+                # q = self.db.exec_("""
+                #     CREATE TABLE opointtmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text,
+                #       grouping text
+                #     );
+                # """)
+                # q = self.db.exec_("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
+                # q = self.db.exec_("""
+                #     CREATE TABLE oareatmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text,
+                #       grouping text
+                #     );
+                # """)
+                # q = self.db.exec_("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # q = self.db.exec_("""
+                #     CREATE TABLE poistmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       activity text,
+                #       hrid text
+                #     );
+                # """)
+                # q = self.db.exec_("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
+                # q = self.db.exec_("""
+                #     CREATE TABLE bufferstmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text
+                #     );
+                # """)
+                # q = self.db.exec_("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # q = self.db.exec_("""
+                #     CREATE TABLE zonestmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       disease text,
+                #       zonetype text,
+                #       subpopulation text,
+                #       validity_start text,
+                #       validity_end text,
+                #       legal_framework text,
+                #       competent_authority text,
+                #       biosecurity_measures text,
+                #       control_of_vectors text,
+                #       control_of_wildlife_reservoir text,
+                #       modified_stamping_out text,
+                #       movement_restriction text,
+                #       stamping_out text,
+                #       surveillance text,
+                #       vaccination text,
+                #       other_measure text,
+                #       related text,
+                #       hrid text,
+                #       timestamp text
+                #     );
+                # """)
+                # q = self.db.exec_("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
 
-                if flds == bflds:
-                    buffn += 1
-                    q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
-                    while q.next():
-                        try:
-                            v1 = int(q.value(4))
-                        except ValueError:
-                            v1 = 'NULL'
+                # for tab in tablst:
+                #     rec = idb.record(tab)
+                #     flds = []
+                #     # s = ''
+                #     for i in xrange(rec.count()):
+                #         flds.append(rec.fieldName(i))
+                #         # s = s + rec.fieldName(i)
 
-                        try:
-                            v2 = int(q.value(7))
-                        except ValueError:
-                            v2 = 'NULL'
+                    # if flds==self.poiflds:
+                    #     q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
+                    #     while q.next():
+                    #         sql = "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
+                    #             % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+                    #         qb = self.db.exec_(sql)
+                            # self.iface.messageBar().pushMessage('Information', '%s' % sql, level=QgsMessageBar.INFO)
 
-                        isql = isql + """
-                            insert into bufferstmp (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
-                            values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                        """ % (q.value(0), q.value(1), q.value(2), q.value(3),
-                               v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                               q.value(12), q.value(13), q.value(14), q.value(15))
+                #     if flds == self.obrflds:
+                #         q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
+                #         while q.next():
+                #             g = q.value(16)
+                #             if g.find('POINT(')==-1:
+                #                 t = 'oareatmp'
+                #             else:
+                #                 t = 'opointtmp'
+                #
+                #             try:
+                #                 v1 = int(q.value(4))
+                #             except ValueError:
+                #                 v1 = 'NULL'
+                #
+                #             try:
+                #                 v2 = int(q.value(7))
+                #             except ValueError:
+                #                 v2 = 'NULL'
+                #
+                #             qb = self.db.exec_("""
+                #                 insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                #                 values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                #             """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
+                #                    v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                #                    q.value(12), q.value(13), q.value(14), q.value(15), g))
+                #
+                #     if flds == bflds:
+                #         q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                #         while q.next():
+                #             try:
+                #                 v1 = int(q.value(4))
+                #             except ValueError:
+                #                 v1 = 'NULL'
+                #
+                #             try:
+                #                 v2 = int(q.value(7))
+                #             except ValueError:
+                #                 v2 = 'NULL'
+                #
+                #             qb = self.db.exec_("""
+                #                 insert into bufferstmp (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                #                 values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                #             """ % (q.value(0), q.value(1), q.value(2), q.value(3),
+                #                    v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                #                    q.value(12), q.value(13), q.value(14), q.value(15)))
+                #
+                #     if flds == zflds:
+                #         q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                #         while q.next():
+                #             qb = self.db.exec_("""
+                #                 insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                #                 values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                #             """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21)))
+                #
 
-                if flds == zflds:
-                    zonen += 1
-                    q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
-                    while q.next():
-                        isql = isql + """
-                            insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
-                            values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                        """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21))
+                # self.db.close()
 
-            # self.iface.messageBar().pushMessage('Information', str(buffn), level=QgsMessageBar.INFO)
 
-            idb.close()
 
-            # if self.dbtype == 'postgis':
-            csql = """
-                CREATE TABLE opointtmp (
-                  gid serial NOT NULL,
-                  localid character varying(254),
-                  code character varying(254),
-                  largescale character varying(254),
-                  disease character varying(254),
-                  animalno integer,
-                  species character varying(254),
-                  production character varying(254),
-                  year integer,
-                  status character varying(254),
-                  suspect character varying(254),
-                  confirmation character varying(254),
-                  expiration character varying(254),
-                  notes character varying(254),
-                  hrid character varying(254),
-                  timestamp character varying(254),
-                  grouping character varying(254),
-                  geom geometry,
-                  CONSTRAINT opointtmp_pkey PRIMARY KEY (gid),
-                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
-                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
-                );
-                CREATE TABLE oareatmp (
-                  gid serial NOT NULL,
-                  localid character varying(254),
-                  code character varying(254),
-                  largescale character varying(254),
-                  disease character varying(254),
-                  animalno integer,
-                  species character varying(254),
-                  production character varying(254),
-                  year integer,
-                  status character varying(254),
-                  suspect character varying(254),
-                  confirmation character varying(254),
-                  expiration character varying(254),
-                  notes character varying(254),
-                  hrid character varying(254),
-                  timestamp character varying(254),
-                  grouping character varying(254),
-                  geom geometry,
-                  CONSTRAINT oareatmp_pkey PRIMARY KEY (gid),
-                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
-                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
-                );
-                CREATE TABLE poistmp (
-                  gid serial NOT NULL,
-                  localid character varying(254),
-                  code character varying(254),
-                  activity character varying(254),
-                  hrid character varying(254),
-                  geom geometry,
-                  CONSTRAINT poistmp_pkey PRIMARY KEY (gid),
-                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
-                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
-                );
-                CREATE TABLE bufferstmp (
-                  gid serial NOT NULL,
-                  localid character varying(254),
-                  code character varying(254),
-                  largescale character varying(254),
-                  disease character varying(254),
-                  animalno integer,
-                  species character varying(254),
-                  production character varying(254),
-                  year integer,
-                  status character varying(254),
-                  suspect character varying(254),
-                  confirmation character varying(254),
-                  expiration character varying(254),
-                  notes character varying(254),
-                  hrid character varying(254),
-                  timestamp character varying(254),
-                  geom geometry,
-                  CONSTRAINT bufferstmp_pkey PRIMARY KEY (gid),
-                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
-                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
-                );
-                CREATE TABLE zonestmp (
-                  gid serial NOT NULL,
-                  localid character varying(254),
-                  code character varying(254),
-                  disease character varying(254),
-                  zonetype character varying(254),
-                  subpopulation character varying(254),
-                  validity_start character varying(254),
-                  validity_end character varying(254),
-                  legal_framework character varying(254),
-                  competent_authority character varying(254),
-                  biosecurity_measures character varying(254),
-                  control_of_vectors character varying(254),
-                  control_of_wildlife_reservoir character varying(254),
-                  modified_stamping_out character varying(254),
-                  movement_restriction character varying(254),
-                  stamping_out character varying(254),
-                  surveillance character varying(254),
-                  vaccination character varying(254),
-                  other_measure character varying(254),
-                  related character varying(254),
-                  hrid character varying(254),
-                  timestamp character varying(254),
-                  geom geometry,
-                  CONSTRAINT zonestmp_pkey PRIMARY KEY (gid),
-                  CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
-                  CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
-                  CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
-                );
-            """
 
-            if oarean>0:
-                sqlinup = sqlinup + """
-                    insert into outbreaks_area (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
-                    select
-                      oareatmp.localid,
-                      oareatmp.code,
-                      oareatmp.largescale,
-                      oareatmp.disease,
-                      oareatmp.animalno,
-                      oareatmp.species,
-                      oareatmp.production,
-                      oareatmp.year,
-                      oareatmp.status,
-                      oareatmp.suspect,
-                      oareatmp.confirmation,
-                      oareatmp.expiration,
-                      oareatmp.notes,
-                      oareatmp.hrid,
-                      oareatmp.timestamp,
-                      oareatmp.grouping,
-                      oareatmp.geom
-                    from outbreaks_area right join oareatmp on outbreaks_area.hrid = oareatmp.hrid where outbreaks_area.hrid is null;
-                    update outbreaks_area as t
-                    set localid = s.localid,
-                      code = s.code,
-                      largescale = s.largescale,
-                      disease = s.disease,
-                      animalno = s.animalno,
-                      species = s.species,
-                      production = s.production,
-                      year = s.year,
-                      status = s.status,
-                      suspect = s.suspect,
-                      confirmation = s.confirmation,
-                      expiration = s.expiration,
-                      notes = s.notes,
-                      hrid = s.hrid,
-                      timestamp = s.timestamp,
-                      grouping = s.grouping,
-                      geom = s.geom
-                    from oareatmp as s where t.hrid = s.hrid;
+            if self.dbtype == 'postgis':
+                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb.setDatabaseName(self.ipath)
+                idb.open()
+                tablst = idb.tables()
+
+                for tab in tablst:
+                    rec = idb.record(tab)
+                    flds = []
+                    for i in xrange(rec.count()):
+                        flds.append(rec.fieldName(i))
+
+                    if flds == self.poiflds:
+                        poin += 1
+                        q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
+                                          % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+
+                    if flds == self.obrflds:
+                        q = idb.exec_(
+                            'select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            g = q.value(16)
+                            if g.find('POINT(') == -1:
+                                t = 'oareatmp'
+                                oarean += 1
+                            else:
+                                t = 'opointtmp'
+                                opointn += 1
+
+                            try:
+                                v1 = int(q.value(4))
+                            except ValueError:
+                                v1 = 'NULL'
+
+                            try:
+                                v2 = int(q.value(7))
+                            except ValueError:
+                                v2 = 'NULL'
+
+                            isql = isql + """
+                                insert into %s (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                            """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
+                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                                   q.value(12), q.value(13), q.value(14), q.value(15), g)
+
+                    if flds == bflds:
+                        buffn += 1
+                        q = idb.exec_(
+                            'select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            try:
+                                v1 = int(q.value(4))
+                            except ValueError:
+                                v1 = 'NULL'
+
+                            try:
+                                v2 = int(q.value(7))
+                            except ValueError:
+                                v2 = 'NULL'
+
+                            isql = isql + """
+                                insert into bufferstmp (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                            """ % (q.value(0), q.value(1), q.value(2), q.value(3),
+                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
+                                   q.value(12), q.value(13), q.value(14), q.value(15))
+
+                    if flds == zflds:
+                        zonen += 1
+                        q = idb.exec_(
+                            'select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                        while q.next():
+                            isql = isql + """
+                                insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                                values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
+                            """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6),
+                                   q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12),
+                                   q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18),
+                                   q.value(19), q.value(20), q.value(21))
+
+                idb.close()
+
+                csql = """
+                    CREATE TABLE opointtmp (
+                      gid serial NOT NULL,
+                      localid character varying(254),
+                      code character varying(254),
+                      largescale character varying(254),
+                      disease character varying(254),
+                      animalno integer,
+                      species character varying(254),
+                      production character varying(254),
+                      year integer,
+                      status character varying(254),
+                      suspect character varying(254),
+                      confirmation character varying(254),
+                      expiration character varying(254),
+                      notes character varying(254),
+                      hrid character varying(254),
+                      timestamp character varying(254),
+                      grouping character varying(254),
+                      geom geometry,
+                      CONSTRAINT opointtmp_pkey PRIMARY KEY (gid),
+                      CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                      CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+                      CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                    );
+                    CREATE TABLE oareatmp (
+                      gid serial NOT NULL,
+                      localid character varying(254),
+                      code character varying(254),
+                      largescale character varying(254),
+                      disease character varying(254),
+                      animalno integer,
+                      species character varying(254),
+                      production character varying(254),
+                      year integer,
+                      status character varying(254),
+                      suspect character varying(254),
+                      confirmation character varying(254),
+                      expiration character varying(254),
+                      notes character varying(254),
+                      hrid character varying(254),
+                      timestamp character varying(254),
+                      grouping character varying(254),
+                      geom geometry,
+                      CONSTRAINT oareatmp_pkey PRIMARY KEY (gid),
+                      CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                      CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                      CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                    );
+                    CREATE TABLE poistmp (
+                      gid serial NOT NULL,
+                      localid character varying(254),
+                      code character varying(254),
+                      activity character varying(254),
+                      hrid character varying(254),
+                      geom geometry,
+                      CONSTRAINT poistmp_pkey PRIMARY KEY (gid),
+                      CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                      CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+                      CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                    );
+                    CREATE TABLE bufferstmp (
+                      gid serial NOT NULL,
+                      localid character varying(254),
+                      code character varying(254),
+                      largescale character varying(254),
+                      disease character varying(254),
+                      animalno integer,
+                      species character varying(254),
+                      production character varying(254),
+                      year integer,
+                      status character varying(254),
+                      suspect character varying(254),
+                      confirmation character varying(254),
+                      expiration character varying(254),
+                      notes character varying(254),
+                      hrid character varying(254),
+                      timestamp character varying(254),
+                      geom geometry,
+                      CONSTRAINT bufferstmp_pkey PRIMARY KEY (gid),
+                      CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                      CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                      CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                    );
+                    CREATE TABLE zonestmp (
+                      gid serial NOT NULL,
+                      localid character varying(254),
+                      code character varying(254),
+                      disease character varying(254),
+                      zonetype character varying(254),
+                      subpopulation character varying(254),
+                      validity_start character varying(254),
+                      validity_end character varying(254),
+                      legal_framework character varying(254),
+                      competent_authority character varying(254),
+                      biosecurity_measures character varying(254),
+                      control_of_vectors character varying(254),
+                      control_of_wildlife_reservoir character varying(254),
+                      modified_stamping_out character varying(254),
+                      movement_restriction character varying(254),
+                      stamping_out character varying(254),
+                      surveillance character varying(254),
+                      vaccination character varying(254),
+                      other_measure character varying(254),
+                      related character varying(254),
+                      hrid character varying(254),
+                      timestamp character varying(254),
+                      geom geometry,
+                      CONSTRAINT zonestmp_pkey PRIMARY KEY (gid),
+                      CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                      CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                      CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                    );
                 """
 
-            if opointn>0:
-                sqlinup = sqlinup + """
-                    insert into outbreaks_point (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
-                    select
-                      opointtmp.localid,
-                      opointtmp.code,
-                      opointtmp.largescale,
-                      opointtmp.disease,
-                      opointtmp.animalno,
-                      opointtmp.species,
-                      opointtmp.production,
-                      opointtmp.year,
-                      opointtmp.status,
-                      opointtmp.suspect,
-                      opointtmp.confirmation,
-                      opointtmp.expiration,
-                      opointtmp.notes,
-                      opointtmp.hrid,
-                      opointtmp.timestamp,
-                      opointtmp.grouping,
-                      opointtmp.geom
-                    from outbreaks_point right join opointtmp on outbreaks_point.hrid = opointtmp.hrid where outbreaks_point.hrid is null;
-                    update outbreaks_point as t
-                    set localid = s.localid,
-                      code = s.code,
-                      largescale = s.largescale,
-                      disease = s.disease,
-                      animalno = s.animalno,
-                      species = s.species,
-                      production = s.production,
-                      year = s.year,
-                      status = s.status,
-                      suspect = s.suspect,
-                      confirmation = s.confirmation,
-                      expiration = s.expiration,
-                      notes = s.notes,
-                      hrid = s.hrid,
-                      timestamp = s.timestamp,
-                      grouping = s.grouping,
-                      geom = s.geom
-                    from opointtmp as s where t.hrid = s.hrid;
-                """
+                if oarean>0:
+                    sqlinup = sqlinup + """
+                        insert into outbreaks_area (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                        select
+                          oareatmp.localid,
+                          oareatmp.code,
+                          oareatmp.largescale,
+                          oareatmp.disease,
+                          oareatmp.animalno,
+                          oareatmp.species,
+                          oareatmp.production,
+                          oareatmp.year,
+                          oareatmp.status,
+                          oareatmp.suspect,
+                          oareatmp.confirmation,
+                          oareatmp.expiration,
+                          oareatmp.notes,
+                          oareatmp.hrid,
+                          oareatmp.timestamp,
+                          oareatmp.grouping,
+                          oareatmp.geom
+                        from outbreaks_area right join oareatmp on outbreaks_area.hrid = oareatmp.hrid where outbreaks_area.hrid is null;
+                        update outbreaks_area as t
+                        set localid = s.localid,
+                          code = s.code,
+                          largescale = s.largescale,
+                          disease = s.disease,
+                          animalno = s.animalno,
+                          species = s.species,
+                          production = s.production,
+                          year = s.year,
+                          status = s.status,
+                          suspect = s.suspect,
+                          confirmation = s.confirmation,
+                          expiration = s.expiration,
+                          notes = s.notes,
+                          hrid = s.hrid,
+                          timestamp = s.timestamp,
+                          grouping = s.grouping,
+                          geom = s.geom
+                        from oareatmp as s where t.hrid = s.hrid;
+                    """
 
-            if poin>0:
-                sqlinup = sqlinup + """
-                    insert into pois (localid, code, activity, hrid, geom)
-                    select
-                      poistmp.localid,
-                      poistmp.code,
-                      poistmp.activity,
-                      poistmp.hrid,
-                      poistmp.geom
-                    from pois right join poistmp on pois.hrid = poistmp.hrid where pois.hrid is null;
-                    update pois as t
-                    set localid = s.localid,
-                      code = s.code,
-                      activity = s.activity,
-                      hrid = s.hrid,
-                      geom = s.geom
-                    from poistmp as s where t.hrid = s.hrid;
-                """
+                if opointn>0:
+                    sqlinup = sqlinup + """
+                        insert into outbreaks_point (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                        select
+                          opointtmp.localid,
+                          opointtmp.code,
+                          opointtmp.largescale,
+                          opointtmp.disease,
+                          opointtmp.animalno,
+                          opointtmp.species,
+                          opointtmp.production,
+                          opointtmp.year,
+                          opointtmp.status,
+                          opointtmp.suspect,
+                          opointtmp.confirmation,
+                          opointtmp.expiration,
+                          opointtmp.notes,
+                          opointtmp.hrid,
+                          opointtmp.timestamp,
+                          opointtmp.grouping,
+                          opointtmp.geom
+                        from outbreaks_point right join opointtmp on outbreaks_point.hrid = opointtmp.hrid where outbreaks_point.hrid is null;
+                        update outbreaks_point as t
+                        set localid = s.localid,
+                          code = s.code,
+                          largescale = s.largescale,
+                          disease = s.disease,
+                          animalno = s.animalno,
+                          species = s.species,
+                          production = s.production,
+                          year = s.year,
+                          status = s.status,
+                          suspect = s.suspect,
+                          confirmation = s.confirmation,
+                          expiration = s.expiration,
+                          notes = s.notes,
+                          hrid = s.hrid,
+                          timestamp = s.timestamp,
+                          grouping = s.grouping,
+                          geom = s.geom
+                        from opointtmp as s where t.hrid = s.hrid;
+                    """
 
-            if buffn>0:
-                sqlinup = sqlinup + """
-                    insert into buffers (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
-                    select
-                      bufferstmp.localid,
-                      bufferstmp.code,
-                      bufferstmp.largescale,
-                      bufferstmp.disease,
-                      bufferstmp.animalno,
-                      bufferstmp.species,
-                      bufferstmp.production,
-                      bufferstmp.year,
-                      bufferstmp.status,
-                      bufferstmp.suspect,
-                      bufferstmp.confirmation,
-                      bufferstmp.expiration,
-                      bufferstmp.notes,
-                      bufferstmp.hrid,
-                      bufferstmp.timestamp,
-                      bufferstmp.geom
-                    from buffers right join bufferstmp on buffers.hrid = bufferstmp.hrid where buffers.hrid is null;
-                    update buffers as t
-                    set localid = s.localid,
-                      code = s.code,
-                      largescale = s.largescale,
-                      disease = s.disease,
-                      animalno = s.animalno,
-                      species = s.species,
-                      production = s.production,
-                      year = s.year,
-                      status = s.status,
-                      suspect = s.suspect,
-                      confirmation = s.confirmation,
-                      expiration = s.expiration,
-                      notes = s.notes,
-                      hrid = s.hrid,
-                      timestamp = s.timestamp,
-                      geom = s.geom
-                    from bufferstmp as s where t.hrid = s.hrid;
-                """
+                if poin>0:
+                    sqlinup = sqlinup + """
+                        insert into pois (localid, code, activity, hrid, geom)
+                        select
+                          poistmp.localid,
+                          poistmp.code,
+                          poistmp.activity,
+                          poistmp.hrid,
+                          poistmp.geom
+                        from pois right join poistmp on pois.hrid = poistmp.hrid where pois.hrid is null;
+                        update pois as t
+                        set localid = s.localid,
+                          code = s.code,
+                          activity = s.activity,
+                          hrid = s.hrid,
+                          geom = s.geom
+                        from poistmp as s where t.hrid = s.hrid;
+                    """
 
-            if zonen>0:
-                sqlinup = sqlinup + """
-                    insert into zones (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
-                    select
-                      zonestmp.localid,
-                      zonestmp.code,
-                      zonestmp.disease,
-                      zonestmp.zonetype,
-                      zonestmp.subpopulation,
-                      zonestmp.validity_start,
-                      zonestmp.validity_end,
-                      zonestmp.legal_framework,
-                      zonestmp.competent_authority,
-                      zonestmp.biosecurity_measures,
-                      zonestmp.control_of_vectors,
-                      zonestmp.control_of_wildlife_reservoir,
-                      zonestmp.modified_stamping_out,
-                      zonestmp.movement_restriction,
-                      zonestmp.stamping_out,
-                      zonestmp.surveillance,
-                      zonestmp.vaccination,
-                      zonestmp.other_measure,
-                      zonestmp.related,
-                      zonestmp.hrid,
-                      zonestmp.timestamp,
-                      zonestmp.geom
-                    from zones right join zonestmp on zones.hrid = zonestmp.hrid where zones.hrid is null;
-                    update zones as t
-                    set localid = s.localid,
-                      code = s.code,
-                      disease = s.disease,
-                      zonetype = s.zonetype,
-                      subpopulation = s.subpopulation,
-                      validity_start = s.validity_start,
-                      validity_end = s.validity_end,
-                      legal_framework = s.legal_framework,
-                      competent_authority = s.competent_authority,
-                      biosecurity_measures = s.biosecurity_measures,
-                      control_of_vectors = s.control_of_vectors,
-                      control_of_wildlife_reservoir = s.control_of_wildlife_reservoir,
-                      modified_stamping_out = s.modified_stamping_out,
-                      movement_restriction = s.movement_restriction,
-                      stamping_out = s.stamping_out,
-                      surveillance = s.surveillance,
-                      vaccination = s.vaccination,
-                      other_measure = s.other_measure,
-                      related = s.related,
-                      hrid = s.hrid,
-                      timestamp = s.timestamp,
-                      geom = s.geom
-                    from zonestmp as s where t.hrid = s.hrid;
-                """
+                if buffn>0:
+                    sqlinup = sqlinup + """
+                        insert into buffers (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                        select
+                          bufferstmp.localid,
+                          bufferstmp.code,
+                          bufferstmp.largescale,
+                          bufferstmp.disease,
+                          bufferstmp.animalno,
+                          bufferstmp.species,
+                          bufferstmp.production,
+                          bufferstmp.year,
+                          bufferstmp.status,
+                          bufferstmp.suspect,
+                          bufferstmp.confirmation,
+                          bufferstmp.expiration,
+                          bufferstmp.notes,
+                          bufferstmp.hrid,
+                          bufferstmp.timestamp,
+                          bufferstmp.geom
+                        from buffers right join bufferstmp on buffers.hrid = bufferstmp.hrid where buffers.hrid is null;
+                        update buffers as t
+                        set localid = s.localid,
+                          code = s.code,
+                          largescale = s.largescale,
+                          disease = s.disease,
+                          animalno = s.animalno,
+                          species = s.species,
+                          production = s.production,
+                          year = s.year,
+                          status = s.status,
+                          suspect = s.suspect,
+                          confirmation = s.confirmation,
+                          expiration = s.expiration,
+                          notes = s.notes,
+                          hrid = s.hrid,
+                          timestamp = s.timestamp,
+                          geom = s.geom
+                        from bufferstmp as s where t.hrid = s.hrid;
+                    """
 
-            dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
+                if zonen>0:
+                    sqlinup = sqlinup + """
+                        insert into zones (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                        select
+                          zonestmp.localid,
+                          zonestmp.code,
+                          zonestmp.disease,
+                          zonestmp.zonetype,
+                          zonestmp.subpopulation,
+                          zonestmp.validity_start,
+                          zonestmp.validity_end,
+                          zonestmp.legal_framework,
+                          zonestmp.competent_authority,
+                          zonestmp.biosecurity_measures,
+                          zonestmp.control_of_vectors,
+                          zonestmp.control_of_wildlife_reservoir,
+                          zonestmp.modified_stamping_out,
+                          zonestmp.movement_restriction,
+                          zonestmp.stamping_out,
+                          zonestmp.surveillance,
+                          zonestmp.vaccination,
+                          zonestmp.other_measure,
+                          zonestmp.related,
+                          zonestmp.hrid,
+                          zonestmp.timestamp,
+                          zonestmp.geom
+                        from zones right join zonestmp on zones.hrid = zonestmp.hrid where zones.hrid is null;
+                        update zones as t
+                        set localid = s.localid,
+                          code = s.code,
+                          disease = s.disease,
+                          zonetype = s.zonetype,
+                          subpopulation = s.subpopulation,
+                          validity_start = s.validity_start,
+                          validity_end = s.validity_end,
+                          legal_framework = s.legal_framework,
+                          competent_authority = s.competent_authority,
+                          biosecurity_measures = s.biosecurity_measures,
+                          control_of_vectors = s.control_of_vectors,
+                          control_of_wildlife_reservoir = s.control_of_wildlife_reservoir,
+                          modified_stamping_out = s.modified_stamping_out,
+                          movement_restriction = s.movement_restriction,
+                          stamping_out = s.stamping_out,
+                          surveillance = s.surveillance,
+                          vaccination = s.vaccination,
+                          other_measure = s.other_measure,
+                          related = s.related,
+                          hrid = s.hrid,
+                          timestamp = s.timestamp,
+                          geom = s.geom
+                        from zonestmp as s where t.hrid = s.hrid;
+                    """
 
-            sql = csql + isql + sqlinup + dsql
+                dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
 
-            cursor = self.PGcon.cursor()
-            cursor.execute(sql)
-            self.PGcon.commit()
+                sql = csql + isql + sqlinup + dsql
+
+                cursor = self.PGcon.cursor()
+                cursor.execute(sql)
+                self.PGcon.commit()
 
             QApplication.restoreOverrideCursor()
 
@@ -627,9 +932,10 @@ class VetEpiGISgroup:
 
             if dlg.groupBox.isChecked():
                 self.dbtype = 'spatialite'
-                self.uri.setDatabase(dlg.lineEdit.text())
-                self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-                self.db.setDatabaseName(self.uri.database())
+                # self.uri.setDatabase(dlg.lineEdit.text())
+                # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
+                # self.db.setDatabaseName(dlg.lineEdit.text())
+                self.dbpath = dlg.lineEdit.text()
 
             if dlg.groupBox_2.isChecked():
                 self.dbtype = 'postgis'
