@@ -54,7 +54,7 @@ class Dialog(QDialog, Ui_Dialog):
         dbpath = QFileDialog.getOpenFileName(self,
             'Select input VetEpiGIS database file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
 
-        if not os.path.isfile(dbpath):
+        if os.path.isfile(dbpath):
             self.lineEdit.setText(dbpath)
 
 

@@ -14,3 +14,32 @@ rm *.pyc
 make test
 /home/sn/apps/bin/qgis.sh
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################################################################################
+BEGIN TRANSACTION;
+CREATE TABLE tempa (gid text, localid text, code text, largescale text, disease text, animalno text, species text, production text, year text, status text, suspect text, confirmation text, expiration text, notes text, hrid text, 'timestamp' text);
+SELECT AddGeometryColumn('tempa', 'geom', 4326, 'MULTIPOLYGON', 'XY');
+INSERT INTO tempa (gid, localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, 'timestamp', geom) select gid, localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, 'timestamp', geom from buffer_10000ml;
+DROP TABLE buffer_10000ml;
+CREATE TABLE buffer_10000ml (gid text, localid text, code text, largescale text, disease text, animalno text, species text, production text, year text, status text, suspect text, confirmation text, expiration text, notes text, hrid text, 'timestamp' text);
+SELECT AddGeometryColumn('buffer_10000ml', 'geom', 4326, 'MULTIPOLYGON', 'XY');
+INSERT INTO buffer_10000ml (gid, localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, 'timestamp', geom) select gid, localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, 'timestamp', geom from tempa;
+DROP TABLE tempa;
+COMMIT;
+

@@ -100,11 +100,6 @@ class Dialog(QDialog, Ui_Dialog):
     def createPGtables(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
-        uri = QgsDataSourceURI()
-        uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
-        db = QSqlDatabase.addDatabase('QSPATIALITE')
-        db.setDatabaseName(uri.database())
-
         self.settings.beginGroup('PostgreSQL/connections/' + self.comboBox.currentText())
         PGhost = self.settings.value('host', '')
         PGport = self.settings.value('port', '')
@@ -120,7 +115,7 @@ class Dialog(QDialog, Ui_Dialog):
 
         cursor = PGcon.cursor()
         sql = """
-            DROP TABLE pois, xdiseases, xpoitypes, xspecies, xstyles, outbreaks_point, outbreaks_area;
+            DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area;
             CREATE TABLE outbreaks_point (
               gid serial NOT NULL,
               localid character varying(254),
@@ -208,6 +203,11 @@ class Dialog(QDialog, Ui_Dialog):
         cursor.execute(sql)
 
         PGcon.commit()
+
+        uri = QgsDataSourceURI()
+        uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
+        db = QSqlDatabase.addDatabase('QSPATIALITE')
+        db.setDatabaseName(uri.database())
 
         if not db.open():
             db.open()

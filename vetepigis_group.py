@@ -243,7 +243,7 @@ class VetEpiGISgroup:
 
                     # outbrk_tabs.append(tab)
 
-                    self.iface.messageBar().pushMessage('Information', tabs, level=QgsMessageBar.INFO)
+                    # self.iface.messageBar().pushMessage('Information', tabs, level=QgsMessageBar.INFO)
 
             idb.close()
 
