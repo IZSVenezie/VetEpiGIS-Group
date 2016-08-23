@@ -328,6 +328,7 @@ class VetEpiGISgroup:
                         # s = s + rec.fieldName(i)
 
                     if flds==self.poiflds:
+                        poin += 1
                         q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
                         while q.next():
                             sql = "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
@@ -340,8 +341,10 @@ class VetEpiGISgroup:
                             g = q.value(16)
                             if g.find('POINT(')==-1:
                                 t = 'oareatmp'
+                                oarean += 1
                             else:
                                 t = 'opointtmp'
+                                opointn += 1
 
                             try:
                                 v1 = int(q.value(4))
@@ -362,6 +365,7 @@ class VetEpiGISgroup:
                             rs = cur.execute(sql)
 
                     if flds == bflds:
+                        buffn += 1
                         q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
                         while q.next():
                             try:
@@ -383,6 +387,7 @@ class VetEpiGISgroup:
                             rs = cur.execute(sql)
 
                     if flds == zflds:
+                        zonen += 1
                         q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
                         while q.next():
                             sql = """
@@ -391,6 +396,242 @@ class VetEpiGISgroup:
                             """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21))
                             rs = cur.execute(sql)
 
+                if oarean>0:
+                    sql = """
+                        insert into outbreaks_area (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                        select
+                          oareatmp.localid,
+                          oareatmp.code,
+                          oareatmp.largescale,
+                          oareatmp.disease,
+                          oareatmp.animalno,
+                          oareatmp.species,
+                          oareatmp.production,
+                          oareatmp.year,
+                          oareatmp.status,
+                          oareatmp.suspect,
+                          oareatmp.confirmation,
+                          oareatmp.expiration,
+                          oareatmp.notes,
+                          oareatmp.hrid,
+                          oareatmp.timestamp,
+                          oareatmp.grouping,
+                          oareatmp.geom
+                        from oareatmp left join outbreaks_area on oareatmp.hrid=outbreaks_area.hrid where outbreaks_area.hrid is null;
+                    """
+                    rs = cur.execute(sql)
+                    sql = """
+                        update outbreaks_area
+                        set localid = (select localid from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          code = (select code from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          largescale = (select largescale from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          disease = (select disease from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          animalno = (select animalno from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          species = (select species from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          production = (select production from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          year = (select year from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          status = (select status from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          suspect = (select suspect from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          confirmation = (select confirmation from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          expiration = (select expiration from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          notes = (select notes from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          hrid = (select hrid from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          timestamp = (select timestamp from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          grouping = (select grouping from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                          geom = (select geom from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
+                          WHERE EXISTS (select * from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
+                        ;
+                    """
+                    rs = cur.execute(sql)
+
+                if opointn>0:
+                    sql = """
+                        insert into outbreaks_point (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, geom)
+                        select
+                          opointtmp.localid,
+                          opointtmp.code,
+                          opointtmp.largescale,
+                          opointtmp.disease,
+                          opointtmp.animalno,
+                          opointtmp.species,
+                          opointtmp.production,
+                          opointtmp.year,
+                          opointtmp.status,
+                          opointtmp.suspect,
+                          opointtmp.confirmation,
+                          opointtmp.expiration,
+                          opointtmp.notes,
+                          opointtmp.hrid,
+                          opointtmp.timestamp,
+                          opointtmp.grouping,
+                          opointtmp.geom
+                        from opointtmp left join outbreaks_point on opointtmp.hrid=outbreaks_point.hrid where outbreaks_point.hrid is null;
+                    """
+                    rs = cur.execute(sql)
+                    sql = """
+                        update outbreaks_point
+                        set localid = (select localid from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          code = (select code from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          largescale = (select largescale from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          disease = (select disease from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          animalno = (select animalno from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          species = (select species from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          production = (select production from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          year = (select year from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          status = (select status from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          suspect = (select suspect from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          confirmation = (select confirmation from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          expiration = (select expiration from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          notes = (select notes from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          hrid = (select hrid from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          timestamp = (select timestamp from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          grouping = (select grouping from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                          geom = (select geom from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
+                          WHERE EXISTS (select * from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
+                        ;
+                    """
+                    rs = cur.execute(sql)
+
+                if poin>0:
+                    sql = """
+                        insert into pois (localid, code, activity, hrid, geom)
+                        select
+                          poistmp.localid,
+                          poistmp.code,
+                          poistmp.activity,
+                          poistmp.hrid,
+                          poistmp.geom
+                        from poistmp left join pois on poistmp.hrid=pois.hrid where pois.hrid is null;
+                    """
+                    rs = cur.execute(sql)
+                    sql = """
+                        update pois
+                        set localid = (select localid from poistmp where pois.hrid = poistmp.hrid),
+                          code = (select code from poistmp where pois.hrid = poistmp.hrid),
+                          activity = (select activity from poistmp where pois.hrid = poistmp.hrid),
+                          hrid = (select hrid from poistmp where pois.hrid = poistmp.hrid),
+                          geom = (select geom from poistmp where pois.hrid = poistmp.hrid)
+                          WHERE EXISTS (select * from poistmp where pois.hrid = poistmp.hrid)
+                        ;
+                    """
+                    rs = cur.execute(sql)
+
+
+                if buffn>0:
+                    sql = """
+                        insert into buffers (localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, geom)
+                        select
+                          bufferstmp.localid,
+                          bufferstmp.code,
+                          bufferstmp.largescale,
+                          bufferstmp.disease,
+                          bufferstmp.animalno,
+                          bufferstmp.species,
+                          bufferstmp.production,
+                          bufferstmp.year,
+                          bufferstmp.status,
+                          bufferstmp.suspect,
+                          bufferstmp.confirmation,
+                          bufferstmp.expiration,
+                          bufferstmp.notes,
+                          bufferstmp.hrid,
+                          bufferstmp.timestamp,
+                          bufferstmp.geom
+                        from bufferstmp left join buffers on bufferstmp.hrid=buffers.hrid where buffers.hrid is null;
+                    """
+                    rs = cur.execute(sql)
+                    sql = """
+                        update buffers
+                        set localid = (select localid from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          code = (select code from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          largescale = (select largescale from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          disease = (select disease from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          animalno = (select animalno from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          species = (select species from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          production = (select production from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          year = (select year from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          status = (select status from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          suspect = (select suspect from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          confirmation = (select confirmation from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          expiration = (select expiration from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          notes = (select notes from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          hrid = (select hrid from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          timestamp = (select timestamp from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                          geom = (select geom from bufferstmp where buffers.hrid = bufferstmp.hrid)
+                          WHERE EXISTS (select * from bufferstmp where buffers.hrid = bufferstmp.hrid)
+                        ;
+                    """
+                    rs = cur.execute(sql)
+
+
+                if zonen>0:
+                    sql = """
+                        insert into zones (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
+                        select
+                          zonestmp.localid,
+                          zonestmp.code,
+                          zonestmp.disease,
+                          zonestmp.zonetype,
+                          zonestmp.subpopulation,
+                          zonestmp.validity_start,
+                          zonestmp.validity_end,
+                          zonestmp.legal_framework,
+                          zonestmp.competent_authority,
+                          zonestmp.biosecurity_measures,
+                          zonestmp.control_of_vectors,
+                          zonestmp.control_of_wildlife_reservoir,
+                          zonestmp.modified_stamping_out,
+                          zonestmp.movement_restriction,
+                          zonestmp.stamping_out,
+                          zonestmp.surveillance,
+                          zonestmp.vaccination,
+                          zonestmp.other_measure,
+                          zonestmp.related,
+                          zonestmp.hrid,
+                          zonestmp.timestamp,
+                          zonestmp.geom
+                        from zonestmp left join zones on zonestmp.hrid=zones.hrid where zones.hrid is null;
+                    """
+                    rs = cur.execute(sql)
+                    sql = """
+                        update zones
+                        set localid = (select localid from zonestmp where zones.hrid = zonestmp.hrid),
+                          code = (select code from zonestmp where zones.hrid = zonestmp.hrid),
+                          disease = (select disease from zonestmp where zones.hrid = zonestmp.hrid),
+                          zonetype = (select zonetype from zonestmp where zones.hrid = zonestmp.hrid),
+                          subpopulation = (select subpopulation from zonestmp where zones.hrid = zonestmp.hrid),
+                          validity_start = (select validity_start from zonestmp where zones.hrid = zonestmp.hrid),
+                          validity_end = (select validity_end from zonestmp where zones.hrid = zonestmp.hrid),
+                          legal_framework = (select legal_framework from zonestmp where zones.hrid = zonestmp.hrid),
+                          competent_authority = (select competent_authority from zonestmp where zones.hrid = zonestmp.hrid),
+                          biosecurity_measures = (select biosecurity_measures from zonestmp where zones.hrid = zonestmp.hrid),
+                          control_of_vectors = (select control_of_vectors from zonestmp where zones.hrid = zonestmp.hrid),
+                          control_of_wildlife_reservoir = (select control_of_wildlife_reservoir from zonestmp where zones.hrid = zonestmp.hrid),
+                          modified_stamping_out = (select modified_stamping_out from zonestmp where zones.hrid = zonestmp.hrid),
+                          movement_restriction = (select movement_restriction from zonestmp where zones.hrid = zonestmp.hrid),
+                          stamping_out = (select stamping_out from zonestmp where zones.hrid = zonestmp.hrid),
+                          surveillance = (select surveillance from zonestmp where zones.hrid = zonestmp.hrid),
+                          vaccination = (select vaccination from zonestmp where zones.hrid = zonestmp.hrid),
+                          other_measure = (select other_measure from zonestmp where zones.hrid = zonestmp.hrid),
+                          related = (select related from zonestmp where zones.hrid = zonestmp.hrid),
+                          hrid = (select hrid from zonestmp where zones.hrid = zonestmp.hrid),
+                          timestamp = (select timestamp from zonestmp where zones.hrid = zonestmp.hrid),
+                          geom = (select geom from zonestmp where zones.hrid = zonestmp.hrid)
+                          WHERE EXISTS (select * from zonestmp where zones.hrid = zonestmp.hrid)
+                        ;
+                    """
+                    rs = cur.execute(sql)
+
+                    rs = cur.execute("DROP TABLE opointtmp;")
+                    rs = cur.execute("delete from geometry_columns where  f_table_name='opointtmp';")
+                    rs = cur.execute("DROP TABLE oareatmp;")
+                    rs = cur.execute("delete from geometry_columns where  f_table_name='oareatmp';")
+                    rs = cur.execute("DROP TABLE poistmp;")
+                    rs = cur.execute("delete from geometry_columns where  f_table_name='poistmp';")
+                    rs = cur.execute("DROP TABLE bufferstmp;")
+                    rs = cur.execute("delete from geometry_columns where  f_table_name='bufferstmp';")
+                    rs = cur.execute("DROP TABLE zonestmp;")
+                    rs = cur.execute("delete from geometry_columns where  f_table_name='zonestmp';")
 
                 conn.commit()
                 rs.close()
