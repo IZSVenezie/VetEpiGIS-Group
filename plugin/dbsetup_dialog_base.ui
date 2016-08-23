@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>433</width>
-    <height>302</height>
+    <height>269</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -89,23 +89,6 @@
          <widget class="QLabel" name="label_8">
           <property name="text">
            <string>Name:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_10">
-          <property name="text">
-           <string>Schema:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QComboBox" name="comboBox_2">
-          <property name="minimumSize">
-           <size>
-            <width>150</width>
-            <height>0</height>
-           </size>
           </property>
          </widget>
         </item>

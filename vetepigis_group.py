@@ -179,7 +179,7 @@ class VetEpiGISgroup:
         y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
         dlg.move(x,y)
 
-        dlg.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/db_9A_36_38_21_25_9A.sqlite')
+        # dlg.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/db_9A_36_38_21_25_9A.sqlite')
 
         if dlg.exec_() == QDialog.Accepted:
             QApplication.setOverrideCursor(Qt.WaitCursor)

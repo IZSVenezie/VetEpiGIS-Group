@@ -18,19 +18,6 @@ make test
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ###################################################################################################
 BEGIN TRANSACTION;
 CREATE TABLE tempa (gid text, localid text, code text, largescale text, disease text, animalno text, species text, production text, year text, status text, suspect text, confirmation text, expiration text, notes text, hrid text, 'timestamp' text);

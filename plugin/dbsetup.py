@@ -58,7 +58,7 @@ class Dialog(QDialog, Ui_Dialog):
 
         self.commandLinkButton_2.clicked.connect(self.createPGtables)
 
-        self.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/c.sqlite')
+        # self.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/c.sqlite')
 
 
     def dbSource(self):

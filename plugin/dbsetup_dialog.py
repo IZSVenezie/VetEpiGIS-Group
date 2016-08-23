@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'dbsetup_dialog_base.ui'
 #
-# Created: Tue Aug 23 07:43:16 2016
+# Created: Tue Aug 23 15:44:47 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,7 @@ except AttributeError:
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName(_fromUtf8("Dialog"))
-        Dialog.resize(433, 302)
+        Dialog.resize(433, 269)
         self.gridLayout_5 = QtGui.QGridLayout(Dialog)
         self.gridLayout_5.setObjectName(_fromUtf8("gridLayout_5"))
         self.groupBox = QtGui.QGroupBox(Dialog)
@@ -67,13 +67,6 @@ class Ui_Dialog(object):
         self.label_8 = QtGui.QLabel(self.groupBox_2)
         self.label_8.setObjectName(_fromUtf8("label_8"))
         self.gridLayout_2.addWidget(self.label_8, 0, 0, 1, 1)
-        self.label_10 = QtGui.QLabel(self.groupBox_2)
-        self.label_10.setObjectName(_fromUtf8("label_10"))
-        self.gridLayout_2.addWidget(self.label_10, 1, 0, 1, 1)
-        self.comboBox_2 = QtGui.QComboBox(self.groupBox_2)
-        self.comboBox_2.setMinimumSize(QtCore.QSize(150, 0))
-        self.comboBox_2.setObjectName(_fromUtf8("comboBox_2"))
-        self.gridLayout_2.addWidget(self.comboBox_2, 1, 1, 1, 1)
         self.gridLayout_3.addLayout(self.gridLayout_2, 0, 0, 1, 1)
         self.commandLinkButton_2 = QtGui.QCommandLinkButton(self.groupBox_2)
         self.commandLinkButton_2.setObjectName(_fromUtf8("commandLinkButton_2"))
@@ -98,6 +91,5 @@ class Ui_Dialog(object):
         self.commandLinkButton.setText(_translate("Dialog", "Create new SpatiaLite database", None))
         self.groupBox_2.setTitle(_translate("Dialog", "PostgreSQL-PostGIS connection", None))
         self.label_8.setText(_translate("Dialog", "Name:", None))
-        self.label_10.setText(_translate("Dialog", "Schema:", None))
         self.commandLinkButton_2.setText(_translate("Dialog", "Create empty tables", None))
 
