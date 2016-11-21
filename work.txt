@@ -5,7 +5,7 @@ cd plugin/
 pyuic4 xabout_dialog_base.ui -o xabout_dialog.py
 pyuic4 dbsetup_dialog_base.ui -o dbsetup_dialog.py
 pyuic4 merge_dialog_base.ui -o merge_dialog.py
-
+pyuic4 export_dialog_base.ui -o export_dialog.py
 
 rm -rf /home/sn/.qgis2/python/plugins/VetEpiGISgroup
 cp -avr /home/sn/dev/QGISplugins/VetEpiGIS/group /home/sn/.qgis2/python/plugins/VetEpiGISgroup

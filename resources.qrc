@@ -6,5 +6,6 @@
         <file>images/item-connections.png</file>
         <file>images/server.png</file>
         <file>images/server-1.png</file>
+        <file>images/export.png</file>
     </qresource>
 </RCC>

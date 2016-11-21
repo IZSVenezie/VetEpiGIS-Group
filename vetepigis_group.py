@@ -35,7 +35,7 @@ from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
 
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
-from plugin import xabout, dbsetup, merge
+from plugin import xabout, dbsetup, merge, export
 import resources_rc
 
 import psycopg2
@@ -155,6 +155,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actMerge)
         self.actMerge.triggered.connect(self.mergeDB)
 
+        self.actExport = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/export.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Export layers'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actExport)
+        self.actExport.triggered.connect(self.exportLy)
+
         self.toolbar = self.iface.addToolBar(
             QCoreApplication.translate('VetEpiGIS-Group', 'VetEpiGIS-Group'))
         self.toolbar.setObjectName(
@@ -164,6 +171,16 @@ class VetEpiGISgroup:
 
         self.toolbar.addAction(self.actSetdb)
         self.toolbar.addAction(self.actMerge)
+        self.toolbar.addAction(self.actExport)
+
+    def exportLy(self):
+        dlg = export.Dialog()
+        dlg.setWindowTitle('Export layer')
+        x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
+        y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
+        dlg.move(x,y)
+        if dlg.exec_() == QDialog.Accepted:
+            j=1
 
 
     def mergeDB(self):
