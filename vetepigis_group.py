@@ -1136,7 +1136,7 @@ class VetEpiGISgroup:
         dlg.textEdit.setFontWeight(QFont.Bold)
         dlg.textEdit.append('VetEpiGIS-Group ' + self.vers +'\n')
         dlg.textEdit.setFontWeight(ow)
-        dlg.textEdit.append('VetEpiGIS-Group is a free QGIS plugin helping veterinarians in the management of spatial data related to animal disease.\n')
+        dlg.textEdit.append('VetEpiGIS-Group is a part of VetEpiGIS plugin family helping veterinarian collaboration in the management of spatial data related to animal disease. It provides a set of functionalities to import/export and share data with other users, by allowing the creation of a working team (this would be based on SQLite db and/or Geoserver).\n')
         dlg.textEdit.setFontWeight(QFont.Bold)
         dlg.textEdit.append('Developers:')
         dlg.textEdit.setFontWeight(ow)

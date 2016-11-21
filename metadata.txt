@@ -13,7 +13,8 @@ description=QGIS plugin to support animal disease control measures
 version=0.1
 author=Norbert Solymosi
 email=gis@izsvenezie.it
-about=VetEpiGIS-Group is a free QGIS plugin which provides a set of functionalities to import/export and share data with other users through a working team.
+about=VetEpiGIS-Group is a part of VetEpiGIS plugin family helping veterinarian collaboration in the management of spatial data related to animal disease.
+It provides a set of functionalities to import/export and share data with other users, by allowing the creation of a working team (this would be based on SQLite db and/or Geoserver).
 
 # End of mandatory metadata
 
