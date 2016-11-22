@@ -1067,6 +1067,7 @@ class VetEpiGISgroup:
             QApplication.restoreOverrideCursor()
 
 
+
     def setupDB(self):
         dlg = dbsetup.Dialog()
         dlg.setWindowTitle('Setup database connection')

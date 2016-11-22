@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'merge_dialog_base.ui'
 #
-# Created: Mon Nov 21 11:08:10 2016
+# Created: Tue Nov 22 10:07:24 2016
 #      by: PyQt4 UI code generator 4.10.4
 #
 # WARNING! All changes made in this file will be lost!
