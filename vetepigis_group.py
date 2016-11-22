@@ -77,7 +77,7 @@ class VetEpiGISgroup:
             'i18n',
             'VetEpiGISgroup_{}.qm'.format(locale))
 
-        self.vers = '0.1'
+        self.vers = '0.11'
         self.prevcur = self.iface.mapCanvas().cursor()
 
         self.origtool = QgsMapTool(self.iface.mapCanvas())
@@ -171,7 +171,7 @@ class VetEpiGISgroup:
 
         self.toolbar.addAction(self.actSetdb)
         self.toolbar.addAction(self.actMerge)
-        self.toolbar.addAction(self.actExport)
+        # self.toolbar.addAction(self.actExport)
 
     # def exportLy(self):
     #     dlg = export.Dialog()
@@ -1062,6 +1062,8 @@ class VetEpiGISgroup:
                 cursor.execute(sql)
                 self.PGcon.commit()
 
+            self.iface.messageBar().pushMessage('Information', 'Selected database merged into the target database.', level=QgsMessageBar.INFO)
+
             QApplication.restoreOverrideCursor()
 
 
@@ -1130,6 +1132,7 @@ class VetEpiGISgroup:
                 #
                 # self.iface.messageBar().pushMessage('Information', str(result[0]), level=QgsMessageBar.INFO)
 
+            self.iface.messageBar().pushMessage('Information', 'Database connection is ready.', level=QgsMessageBar.INFO)
             QApplication.restoreOverrideCursor()
 
 
