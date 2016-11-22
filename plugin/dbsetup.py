@@ -63,7 +63,7 @@ class Dialog(QDialog, Ui_Dialog):
 
     def dbSource(self):
         dbpath = QFileDialog.getOpenFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
-        if not os.path.isfile(dbpath):
+        if os.path.isfile(dbpath):
             self.lineEdit.setText(dbpath)
 
 
