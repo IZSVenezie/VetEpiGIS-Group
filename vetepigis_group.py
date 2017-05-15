@@ -77,7 +77,7 @@ class VetEpiGISgroup:
             'i18n',
             'VetEpiGISgroup_{}.qm'.format(locale))
 
-        self.vers = '0.11'
+        self.vers = '0.111'
         self.prevcur = self.iface.mapCanvas().cursor()
 
         self.origtool = QgsMapTool(self.iface.mapCanvas())
@@ -201,7 +201,7 @@ class VetEpiGISgroup:
         if dlg.exec_() == QDialog.Accepted:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
-            ipath = dlg.lineEdit.text()
+            self.ipath = dlg.lineEdit.text()
 
             isql = ''
             sqlinup = ''
@@ -219,7 +219,7 @@ class VetEpiGISgroup:
                 #                                     level=QgsMessageBar.INFO)
 
                 idb = QSqlDatabase.addDatabase('QSPATIALITE')
-                idb.setDatabaseName(ipath)
+                idb.setDatabaseName(self.ipath)
                 if not idb.open():
                     idb.open()
                 tablst = idb.tables()
