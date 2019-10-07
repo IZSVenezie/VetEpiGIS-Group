@@ -22,30 +22,31 @@
 """
 
 import os, shutil
-from PyQt4.QtGui import *
-from PyQt4.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
-    pyqtSignal, QRegExp, QDateTime, QTranslator, QSize
-from PyQt4.QtSql import *
-# from PyQt4.QtXml import *
-
-from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
-    QgsCoordinateTransform, QGis, QgsVectorFileWriter, QgsMapLayerRegistry, QgsFeature, \
-    QgsGeometry, QgsFeatureRequest, QgsPoint, QgsVectorLayer, QgsCoordinateReferenceSystem, \
-    QgsRectangle, QgsDataSourceURI, QgsDataProvider, QgsComposition, QgsComposerMap, QgsAtlasComposition
-
-from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
-
-from plugin import xabout, dbsetup, merge
-import resources_rc
-
 import psycopg2
 import psycopg2.extensions
 # use unicode!
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
-from pyspatialite import dbapi2 as spdb
+from PyQt5.QtGui import *
+from PyQt5.QtCore import pyqtSignal, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
+    pyqtSignal, QRegExp, QDateTime, QTranslator, QSize
+from PyQt5.QtSql import *
+# from PyQt4.QtXml import *
+from PyQt5.QtWidgets import *
 
+from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
+    QgsCoordinateTransform, QgsVectorFileWriter, QgsFeature, \
+    QgsGeometry, QgsFeatureRequest, QgsPoint, QgsVectorLayer, QgsCoordinateReferenceSystem, \
+    QgsRectangle, QgsDataSourceUri, QgsDataProvider, QgsLayout, QgsLayoutItem
+
+from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
+
+from .plugin import xabout, dbsetup, merge
+from .resources_rc import *
+
+
+#from pyspatialite import dbapi2 as spdb
 
 from uuid import getnode as get_mac
 

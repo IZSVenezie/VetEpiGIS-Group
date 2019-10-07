@@ -21,12 +21,12 @@
  ***************************************************************************/
 """
 import os, shutil
-from PyQt4.QtGui import *
-from PyQt4.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
+from PyQt5.QtGui import *
+from PyQt5.QtCore import SIGNAL, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
     pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
 
 from qgis.core import QgsDataSourceURI
-from PyQt4.QtSql import *
+from PyQt5.QtSql import *
 
 import psycopg2
 import psycopg2.extensions
@@ -37,14 +37,14 @@ psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 from export_dialog import Ui_Dialog
 
 
-class Dialog(QDialog, Ui_Dialog):         
+class Dialog(QDialog, Ui_Dialog):
     def __init__(self):
         """Constructor for the dialog.
-        
+
         """
-        
-        QDialog.__init__(self)                               
-                        
+
+        QDialog.__init__(self)
+
         self.setupUi(self)
         self.plugin_dir = ''
         self.settings = ''
