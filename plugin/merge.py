@@ -26,7 +26,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QSettings, QCoreApplication, QFile, QFi
     pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
 
 from PyQt5.QtSql import *
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QDialog, QFileDialog
 
 import psycopg2
 import psycopg2.extensions
@@ -55,7 +55,7 @@ class Dialog(QDialog, Ui_Dialog):
     def dbSource(self):
         dbpath = QFileDialog.getOpenFileName(self,
             'Select input VetEpiGIS database file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
-
+        dbpath = dbpath[0]
         if os.path.isfile(dbpath):
             self.lineEdit.setText(dbpath)
 

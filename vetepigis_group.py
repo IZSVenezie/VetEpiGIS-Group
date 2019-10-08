@@ -38,7 +38,7 @@ from PyQt5.QtWidgets import *
 from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
     QgsCoordinateTransform, QgsVectorFileWriter, QgsFeature, \
     QgsGeometry, QgsFeatureRequest, QgsPoint, QgsVectorLayer, QgsCoordinateReferenceSystem, \
-    QgsRectangle, QgsDataSourceUri, QgsDataProvider, QgsLayout, QgsLayoutItem
+    QgsRectangle, QgsDataSourceUri, QgsDataProvider, QgsLayout, QgsLayoutItem, Qgis
 
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
@@ -1063,7 +1063,7 @@ class VetEpiGISgroup:
                 cursor.execute(sql)
                 self.PGcon.commit()
 
-            self.iface.messageBar().pushMessage('Information', 'Selected database merged into the target database.', level=QgsMessageBar.INFO)
+            self.iface.messageBar().pushMessage('Information', 'Selected database merged into the target database.', level=Qgis.Info)
 
             QApplication.restoreOverrideCursor()
 
@@ -1134,7 +1134,7 @@ class VetEpiGISgroup:
                 #
                 # self.iface.messageBar().pushMessage('Information', str(result[0]), level=QgsMessageBar.INFO)
 
-            self.iface.messageBar().pushMessage('Information', 'Database connection is ready.', level=QgsMessageBar.INFO)
+            self.iface.messageBar().pushMessage('Information', 'Database connection is ready.', level=Qgis.Info)
             QApplication.restoreOverrideCursor()
 
 

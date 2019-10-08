@@ -25,7 +25,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import pyqtSignal, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
     pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
 
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import *
 
 from qgis.core import QgsDataSourceUri
 from PyQt5.QtSql import *
@@ -65,6 +65,7 @@ class Dialog(QDialog, Ui_Dialog):
 
     def dbSource(self):
         dbpath = QFileDialog.getOpenFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
+        dbpath = dbpath[0]
         if os.path.isfile(dbpath):
             self.lineEdit.setText(dbpath)
 
@@ -87,6 +88,7 @@ class Dialog(QDialog, Ui_Dialog):
 
     def createNewSLdb(self):
         fileName = QFileDialog.getSaveFileName(self, caption='Create new SpatiaLite database')
+        fileName = fileName[0]
         try:
             QApplication.setOverrideCursor(Qt.WaitCursor)
             file = QFile(fileName + '.sqlite')
@@ -233,7 +235,7 @@ class Dialog(QDialog, Ui_Dialog):
 
         cursor = PGcon.cursor()
         sql = """
-            DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area, buffers, zones;
+            --DROP TABLE IF EXISTS xdiseases, xpoitypes, xspecies, xstyles, pois, outbreaks_point, outbreaks_area, buffers, zones;
             CREATE TABLE outbreaks_point (
               gid serial NOT NULL,
               localid character varying(254),
