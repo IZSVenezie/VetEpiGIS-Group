@@ -21,23 +21,23 @@
  ***************************************************************************/
 """
 
-from PyQt4.QtGui import QDialog
+from PyQt5.QtWidgets import QDialog
 
 
-from xabout_dialog import Ui_Dialog
+from .xabout_dialog import Ui_Dialog
 
 
-class Dialog(QDialog, Ui_Dialog):         
+class Dialog(QDialog, Ui_Dialog):
     def __init__(self):
         """Constructor for the dialog.
-        
+
         """
-        
-        QDialog.__init__(self)                               
-                        
+
+        QDialog.__init__(self)
+
         self.setupUi(self)
-        
-        
-        
+
+
+
 
 
