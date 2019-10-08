@@ -2,7 +2,7 @@
 """
 /***************************************************************************
  VetEpiGIS-Group
-   A QGIS plugin 
+   A QGIS plugin
    Spatial functions for vet epidemiology
                               -------------------
         begin                : 2016-05-06

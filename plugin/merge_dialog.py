@@ -7,7 +7,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -18,43 +18,43 @@ except AttributeError:
 try:
     _encoding = QtGui.QApplication.UnicodeUTF8
     def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+        return QtWidgets.QApplication.translate(context, text, disambig, _encoding)
 except AttributeError:
     def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig)
+        return QtWidgets.QApplication.translate(context, text, disambig)
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName(_fromUtf8("Dialog"))
         Dialog.resize(451, 131)
-        self.gridLayout = QtGui.QGridLayout(Dialog)
+        self.gridLayout = QtWidgets.QGridLayout(Dialog)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
-        self.label_9 = QtGui.QLabel(Dialog)
+        self.label_9 = QtWidgets.QLabel(Dialog)
         self.label_9.setObjectName(_fromUtf8("label_9"))
         self.gridLayout.addWidget(self.label_9, 0, 0, 1, 1)
-        self.lineEdit = QtGui.QLineEdit(Dialog)
+        self.lineEdit = QtWidgets.QLineEdit(Dialog)
         self.lineEdit.setReadOnly(True)
         self.lineEdit.setObjectName(_fromUtf8("lineEdit"))
         self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 2)
-        self.toolButton = QtGui.QToolButton(Dialog)
+        self.toolButton = QtWidgets.QToolButton(Dialog)
         self.toolButton.setObjectName(_fromUtf8("toolButton"))
         self.gridLayout.addWidget(self.toolButton, 0, 3, 1, 1)
-        self.checkBox = QtGui.QCheckBox(Dialog)
+        self.checkBox = QtWidgets.QCheckBox(Dialog)
         self.checkBox.setEnabled(False)
         self.checkBox.setChecked(True)
         self.checkBox.setObjectName(_fromUtf8("checkBox"))
         self.gridLayout.addWidget(self.checkBox, 1, 1, 1, 1)
-        spacerItem = QtGui.QSpacerItem(20, 50, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        spacerItem = QtWidgets.QSpacerItem(20, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 2, 2, 1, 2)
-        self.buttonBox = QtGui.QDialogButtonBox(Dialog)
+        self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
         self.gridLayout.addWidget(self.buttonBox, 3, 1, 1, 3)
 
         self.retranslateUi(Dialog)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("accepted()")), Dialog.accept)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL(_fromUtf8("rejected()")), Dialog.reject)
+        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.rejected.connect(Dialog.reject)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
