@@ -1070,6 +1070,7 @@ class VetEpiGISgroup:
 
 
     def setupDB(self):
+        tool_name = 'Setup working database'
         dlg = dbsetup.Dialog()
         dlg.setWindowTitle('Setup database connection')
         dlg.plugin_dir = self.plugin_dir
@@ -1093,9 +1094,9 @@ class VetEpiGISgroup:
                 dbpath = dlg.lineEdit_spatialite.text()
                 ret_sl = self.createNewSLdb(dbpath)
                 if ret_sl:
-                    self.iface.messageBar().pushMessage('Information', 'Created database.', level=Qgis.Info)
+                    self.iface.messageBar().pushMessage(tool_name, 'Created database.', level=Qgis.Info)
                 else:
-                    self.iface.messageBar().pushMessage('Warning', 'Error creating database.', level=Qgis.Warning)
+                    self.iface.messageBar().pushMessage(tool_name, 'Error creating database.', level=Qgis.Warning)
 
             elif dlg.radioButton_postgis.isChecked():
                 self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox_pg_db.currentText())
@@ -1121,11 +1122,11 @@ class VetEpiGISgroup:
                         PGpassword = dlg2.lineEdit_pw.text()
 
                         if (not PGusername or PGusername =='') or (not PGpassword or PGpassword ==''):
-                            self.iface.messageBar().pushMessage('Warning', 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                            self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
                             QApplication.restoreOverrideCursor()
                             return
                     else:
-                        self.iface.messageBar().pushMessage('Warning', 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                        self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
                         QApplication.restoreOverrideCursor()
                         return
 
@@ -1141,7 +1142,7 @@ class VetEpiGISgroup:
                     sql = "SELECT PostGIS_version();"
                     cursor.execute(sql)
                 except  psycopg2.Error as e:
-                    self.iface.messageBar().pushMessage('Warning', 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
+                    self.iface.messageBar().pushMessage(tool_name, 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
                     PGcon.close()
                     QApplication.restoreOverrideCursor()
                     return
@@ -1169,13 +1170,13 @@ class VetEpiGISgroup:
                 # if a table already exist end the tool
                 if ret_q[0]:
                     self.iface.messageBar().clearWidgets()
-                    self.iface.messageBar().pushMessage('Warning', 'Tables already exist. No tables were added to database', level=Qgis.Warning, duration=10)
+                    self.iface.messageBar().pushMessage(tool_name, 'Tables already exist. No tables were added to database', level=Qgis.Warning, duration=10)
                 else:
                     ret_pg = self.createPGtables(PGdatabase, PGcon)
                     if ret_pg:
-                        self.iface.messageBar().pushMessage('Information', 'Added tables to database.', level=Qgis.Info)
+                        self.iface.messageBar().pushMessage(tool_name, 'Added tables to database.', level=Qgis.Info)
                     else:
-                        self.iface.messageBar().pushMessage('Warning', 'Error adding tables database.', level=Qgis.Warning)
+                        self.iface.messageBar().pushMessage(tool_name, 'Error adding tables database.', level=Qgis.Warning)
 
             QApplication.restoreOverrideCursor()
 
