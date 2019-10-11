@@ -42,7 +42,7 @@ from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
 
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
-from .plugin import xabout, dbsetup, merge, dblogin
+from .plugin import xabout, dbsetup, merge, dblogin, dbconnection
 from .resources_rc import *
 
 
@@ -89,23 +89,9 @@ class VetEpiGISgroup:
 
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
-
-        # mac = '_'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
-        # dbuid = 'db_%s.sqlite' % mac
-        # dbfold = os.path.join(self.plugin_dir, 'db')
-        # dbuidpath = os.path.join(dbfold, dbuid)
-        # if not os.path.isfile(dbuidpath):
-        #     shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
         #
         self.dbtype = ''
         self.dbpath = ''
-
-        # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-        # self.uri = QgsDataSourceURI()
-        # self.uri.setDatabase(dbuidpath)
-        #
-        # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-        # self.db.setDatabaseName(self.uri.database())
 
         self.obrflds = ['gid', 'localid', 'code', 'largescale', 'disease', 'animalno', 'species',
             'production', 'year', 'status', 'suspect', 'confirmation', 'expiration', 'notes',
@@ -114,6 +100,10 @@ class VetEpiGISgroup:
         self.poiflds.append('activity')
         self.poiflds.append('hrid')
         self.poiflds.append('geom')
+        self.sl_path_memorized = ''
+        self.pg_memorized =''
+
+        self.tableList = ['outbreaks_point','outbreaks_area','pois', 'buffers','zones','xdiseases','xpoitypes','xspecies','xstyles']
 
 
     # noinspection PyMethodMayBeStatic
@@ -149,6 +139,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSetdb)
         self.actSetdb.triggered.connect(self.setupDB)
 
+        self.actConndb = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/connection.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Load working database'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actConndb)
+        self.actConndb.triggered.connect(self.loadDB)
+
         self.actMerge = QAction(
             QIcon(':/plugins/VetEpiGISgroup/images/server-1.png'),
             QCoreApplication.translate('VetEpiGIS-Group', 'Merging databases'),
@@ -170,18 +167,25 @@ class VetEpiGISgroup:
 
         """Add buttons to the toolbar"""
 
-        self.toolbar.addAction(self.actSetdb)
-        self.toolbar.addAction(self.actMerge)
+        #self.toolbar.addAction(self.actSetdb)
+        #self.toolbar.addAction(self.actConndb)
+        #self.toolbar.addAction(self.actMerge)
         # self.toolbar.addAction(self.actExport)
 
-    # def exportLy(self):
-    #     dlg = export.Dialog()
-    #     dlg.setWindowTitle('Export layer')
-    #     x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
-    #     y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
-    #     dlg.move(x,y)
-    #     if dlg.exec_() == QDialog.Accepted:
-    #         j=1
+        self.grp1 = QToolButton(self.toolbar)
+        self.grp1.setPopupMode(QToolButton.MenuButtonPopup)
+        self.grp1.addActions([self.actSetdb, self.actConndb])
+        self.grp1.setDefaultAction(self.actSetdb)
+        self.toolbar.addWidget(self.grp1)
+
+        # self.grp2 = QToolButton(self.toolbar)
+        # self.grp2.setPopupMode(QToolButton.MenuButtonPopup)
+        # self.grp2.addActions([self.actMerge])
+        # self.grp2.setDefaultAction(self.actMerge)
+        # self.toolbar.addWidget(self.grp2)
+
+        self.toolbar.addAction(self.actMerge)
+
 
 
     def mergeDB(self):
@@ -1067,6 +1071,116 @@ class VetEpiGISgroup:
 
             QApplication.restoreOverrideCursor()
 
+    def loadDB(self):
+        tool_name = 'Load database'
+        dlg = dbconnection.Dialog()
+        dlg.setWindowTitle(tool_name)
+        dlg.plugin_dir = self.plugin_dir
+        x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
+        y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
+        dlg.move(x,y)
+
+        self.settings.beginGroup('PostgreSQL/connections')
+        PGconns = self.settings.childGroups()
+        for pg in PGconns:
+            dlg.comboBox_pg_db.addItem(pg)
+        self.settings.endGroup()
+
+        dlg.settings = self.settings
+
+        if dlg.exec_() == QDialog.Accepted:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            if dlg.radioButton_spatialite.isChecked():
+
+                self.ipath = dlg.lineEdit_spatialite.text()
+                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb.setDatabaseName(self.ipath)
+                if not idb.open():
+                    idb.open()
+                tablst = idb.tables()
+
+                for tab in self.tableList:
+                    if tab not in tablst:
+                        self.iface.messageBar().pushMessage(tool_name, "Database NOT loaded. One or more tables don't exist", level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
+                self.iface.messageBar().pushMessage(tool_name, "Database loaded. ", level=Qgis.Info, duration=10)
+                self.dbtype = 'spatialite'
+
+
+            elif dlg.radioButton_postgis.isChecked():
+                self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox_pg_db.currentText())
+                PGhost = self.settings.value('host', '')
+                PGport = self.settings.value('port', '')
+                PGdatabase = self.settings.value('database', '')
+                PGusername = self.settings.value('username', '')
+                PGpassword = self.settings.value('password', '')
+                self.settings.endGroup()
+
+                #check if pw and user exist
+                PGcon = None
+                if not PGusername or PGusername =='':
+                    dlg2 = dblogin.Dialog()
+                    dlg2.setWindowTitle('Set login')
+                    dlg2.plugin_dir = self.plugin_dir
+                    x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg2.width()/2
+                    y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg2.height()/2
+                    dlg2.move(x,y)
+
+                    if dlg2.exec_() == QDialog.Accepted:
+                        PGusername = dlg2.lineEdit_user.text()
+                        PGpassword = dlg2.lineEdit_pw.text()
+
+                        if (not PGusername or PGusername =='') or (not PGpassword or PGpassword ==''):
+                            self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                            QApplication.restoreOverrideCursor()
+                            return
+                    else:
+                        self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
+
+                try:
+                    PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
+                except Exception:
+                    PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
+
+                #check if database is spatial
+                # https://stackoverflow.com/questions/53462775/how-to-determine-if-postgis-is-enabled-on-a-database
+                cursor = PGcon.cursor()
+                try:
+                    sql = "SELECT PostGIS_version();"
+                    cursor.execute(sql)
+                except  psycopg2.Error as e:
+                    self.iface.messageBar().pushMessage(tool_name, 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
+                    PGcon.close()
+                    QApplication.restoreOverrideCursor()
+                    return
+
+                # Check if tables already exist
+                cursor = PGcon.cursor()
+                # https://www.dbrnd.com/2017/07/postgresql-different-options-to-check-if-table-exists-in-database-to_regclass/
+                # check on public schema
+                sql = """SELECT table_name
+                         FROM information_schema.tables
+                         WHERE table_schema = 'public'; """
+
+                cursor.execute(sql)
+                ret_q = cursor.fetchall()
+                table_q_list = []
+                for a in ret_q:
+                    table_q_list.append(a[0])
+
+                for tab in self.tableList:
+                    if tab not in table_q_list:
+                        self.iface.messageBar().pushMessage(tool_name, "Database NOT loaded. One or more tables don't exist", level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
+
+                self.iface.messageBar().pushMessage(tool_name, 'Database loaded.', level=Qgis.Info)
+                self.dbtype = 'postgis'
+
+            QApplication.restoreOverrideCursor()
 
 
     def setupDB(self):
@@ -1095,6 +1209,7 @@ class VetEpiGISgroup:
                 ret_sl = self.createNewSLdb(dbpath)
                 if ret_sl:
                     self.iface.messageBar().pushMessage(tool_name, 'Created database.', level=Qgis.Info)
+                    self.sl_path_memorized = dlg.comboBox_pg_db.currentText()
                 else:
                     self.iface.messageBar().pushMessage(tool_name, 'Error creating database.', level=Qgis.Warning)
 
@@ -1175,6 +1290,7 @@ class VetEpiGISgroup:
                     ret_pg = self.createPGtables(PGdatabase, PGcon)
                     if ret_pg:
                         self.iface.messageBar().pushMessage(tool_name, 'Added tables to database.', level=Qgis.Info)
+                        self.pg_memorized = dlg.comboBox_pg_db.currentText()
                     else:
                         self.iface.messageBar().pushMessage(tool_name, 'Error adding tables database.', level=Qgis.Warning)
 
