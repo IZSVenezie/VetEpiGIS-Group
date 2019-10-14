@@ -153,6 +153,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actMerge)
         self.actMerge.triggered.connect(self.mergeDB)
 
+        self.actSelMerge = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/server-2.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Merging databases from selected feature'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSelMerge)
+        self.actMerge.triggered.connect(self.mergeDB)
+
         # self.actExport = QAction(
         #     QIcon(':/plugins/VetEpiGISgroup/images/export.png'),
         #     QCoreApplication.translate('VetEpiGIS-Group', 'Export layers'),
@@ -178,13 +185,12 @@ class VetEpiGISgroup:
         self.grp1.setDefaultAction(self.actSetdb)
         self.toolbar.addWidget(self.grp1)
 
-        # self.grp2 = QToolButton(self.toolbar)
-        # self.grp2.setPopupMode(QToolButton.MenuButtonPopup)
-        # self.grp2.addActions([self.actMerge])
-        # self.grp2.setDefaultAction(self.actMerge)
-        # self.toolbar.addWidget(self.grp2)
+        self.grp2 = QToolButton(self.toolbar)
+        self.grp2.setPopupMode(QToolButton.MenuButtonPopup)
+        self.grp2.addActions([self.actMerge, self.actSelMerge])
+        self.grp2.setDefaultAction(self.actMerge)
+        self.toolbar.addWidget(self.grp2)
 
-        self.toolbar.addAction(self.actMerge)
 
 
 
@@ -194,7 +200,7 @@ class VetEpiGISgroup:
         #                                         level=QgsMessageBar.INFO)
         #     return
 
-        dlg = merge.Dialog()
+        dlg = merge.Dialog(self.dbpath,self.dbtype)
         dlg.setWindowTitle('Import database')
         # dlg.plugin_dir = self.plugin_dir
         x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
@@ -232,110 +238,110 @@ class VetEpiGISgroup:
                 # self.iface.messageBar().pushMessage('Information', self.ipath, level=QgsMessageBar.INFO)
                 # self.iface.messageBar().pushMessage('Information', self.dbpath, level=QgsMessageBar.INFO)
 
-                conn = spdb.connect(self.dbpath)
+                conn = idb.connect(self.dbpath)
                 cur = conn.cursor()
-                rs = cur.execute("""
-                    CREATE TABLE opointtmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      largescale text,
-                      disease text,
-                      animalno numeric,
-                      species text,
-                      production text,
-                      year numeric,
-                      status text,
-                      suspect text,
-                      confirmation text,
-                      expiration text,
-                      notes text,
-                      hrid text,
-                      timestamp text,
-                      grouping text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE oareatmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      largescale text,
-                      disease text,
-                      animalno numeric,
-                      species text,
-                      production text,
-                      year numeric,
-                      status text,
-                      suspect text,
-                      confirmation text,
-                      expiration text,
-                      notes text,
-                      hrid text,
-                      timestamp text,
-                      grouping text
-                    );
-                    """)
-                rs = cur.execute("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE poistmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      activity text,
-                      hrid text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE bufferstmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      largescale text,
-                      disease text,
-                      animalno numeric,
-                      species text,
-                      production text,
-                      year numeric,
-                      status text,
-                      suspect text,
-                      confirmation text,
-                      expiration text,
-                      notes text,
-                      hrid text,
-                      timestamp text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE zonestmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      disease text,
-                      zonetype text,
-                      subpopulation text,
-                      validity_start text,
-                      validity_end text,
-                      legal_framework text,
-                      competent_authority text,
-                      biosecurity_measures text,
-                      control_of_vectors text,
-                      control_of_wildlife_reservoir text,
-                      modified_stamping_out text,
-                      movement_restriction text,
-                      stamping_out text,
-                      surveillance text,
-                      vaccination text,
-                      other_measure text,
-                      related text,
-                      hrid text,
-                      timestamp text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE opointtmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text,
+                #       grouping text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE oareatmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text,
+                #       grouping text
+                #     );
+                #     """)
+                # rs = cur.execute("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE poistmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       activity text,
+                #       hrid text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE bufferstmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE zonestmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       disease text,
+                #       zonetype text,
+                #       subpopulation text,
+                #       validity_start text,
+                #       validity_end text,
+                #       legal_framework text,
+                #       competent_authority text,
+                #       biosecurity_measures text,
+                #       control_of_vectors text,
+                #       control_of_wildlife_reservoir text,
+                #       modified_stamping_out text,
+                #       movement_restriction text,
+                #       stamping_out text,
+                #       surveillance text,
+                #       vaccination text,
+                #       other_measure text,
+                #       related text,
+                #       hrid text,
+                #       timestamp text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
 
                 # self.iface.messageBar().pushMessage('Information', 'idb: %s' % idb.isOpen(),
                 #                                     level=QgsMessageBar.INFO)
@@ -1099,14 +1105,16 @@ class VetEpiGISgroup:
                     idb.open()
                 tablst = idb.tables()
 
+                #Check if all tables exist in database
                 for tab in self.tableList:
                     if tab not in tablst:
                         self.iface.messageBar().pushMessage(tool_name, "Database NOT loaded. One or more tables don't exist", level=Qgis.Warning, duration=10)
                         QApplication.restoreOverrideCursor()
                         return
-                self.iface.messageBar().pushMessage(tool_name, "Database loaded. ", level=Qgis.Info, duration=10)
-                self.dbtype = 'spatialite'
 
+                self.iface.messageBar().pushMessage(tool_name, "Database loaded.", level=Qgis.Info, duration=10)
+                self.dbtype = 'spatialite'
+                self.dbpath = self.ipath
 
             elif dlg.radioButton_postgis.isChecked():
                 self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox_pg_db.currentText())
@@ -1179,6 +1187,7 @@ class VetEpiGISgroup:
 
                 self.iface.messageBar().pushMessage(tool_name, 'Database loaded.', level=Qgis.Info)
                 self.dbtype = 'postgis'
+                self.dbpath = dlg.comboBox_pg_db.currentText()
 
             QApplication.restoreOverrideCursor()
 

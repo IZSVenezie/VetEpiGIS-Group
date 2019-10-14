@@ -8,5 +8,6 @@
         <file>images/server-1.png</file>
         <file>images/export.png</file>
 		<file>images/connection.png</file>
+		<file>images/server-2.png</file>
     </qresource>
 </RCC>
