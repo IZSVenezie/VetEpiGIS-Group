@@ -29,28 +29,34 @@ class Ui_Dialog(object):
         Dialog.resize(451, 131)
         self.gridLayout = QtWidgets.QGridLayout(Dialog)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
-        self.label_9 = QtWidgets.QLabel(Dialog)
-        self.label_9.setObjectName(_fromUtf8("label_9"))
-        self.gridLayout.addWidget(self.label_9, 0, 0, 1, 1)
+
+        self.label_db = QtWidgets.QLabel(Dialog)
+        self.label_db.setObjectName(_fromUtf8("label_db"))
+        self.gridLayout.addWidget(self.label_db, 0, 0, 1, 1)
+
         self.lineEdit = QtWidgets.QLineEdit(Dialog)
         self.lineEdit.setReadOnly(True)
         self.lineEdit.setObjectName(_fromUtf8("lineEdit"))
-        self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 2)
+        self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 1)
+
         self.toolButton = QtWidgets.QToolButton(Dialog)
         self.toolButton.setObjectName(_fromUtf8("toolButton"))
-        self.gridLayout.addWidget(self.toolButton, 0, 3, 1, 1)
+        self.gridLayout.addWidget(self.toolButton, 0, 2, 1, 1)
+
         self.checkBox = QtWidgets.QCheckBox(Dialog)
         self.checkBox.setEnabled(False)
         self.checkBox.setChecked(True)
         self.checkBox.setObjectName(_fromUtf8("checkBox"))
         self.gridLayout.addWidget(self.checkBox, 1, 1, 1, 1)
+
         spacerItem = QtWidgets.QSpacerItem(20, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 2, 2, 1, 2)
+
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
-        self.gridLayout.addWidget(self.buttonBox, 3, 1, 1, 3)
+        self.gridLayout.addWidget(self.buttonBox, 3, 1, 1, 2)
 
         self.retranslateUi(Dialog)
         self.buttonBox.accepted.connect(Dialog.accept)
@@ -59,7 +65,7 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(_translate("Dialog", "Dialog", None))
-        self.label_9.setText(_translate("Dialog", "SpatiaLite file:", None))
+        self.label_db.setText(_translate("Dialog", "SpatiaLite file:", None))
         self.toolButton.setText(_translate("Dialog", "...", None))
         self.checkBox.setText(_translate("Dialog", "Update existing records", None))
 
