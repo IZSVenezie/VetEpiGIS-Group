@@ -48,7 +48,7 @@ class Ui_Dialog(object):
 
         self.label_sl_description = QtWidgets.QLabel(Dialog)
         self.label_sl_description.setObjectName(_fromUtf8("label_sl_description"))
-        self.label_sl_description.setText('Create a SQLite database with tables')
+        self.label_sl_description.setText('Load an SQLite database')
         self.label_sl_description.setStyleSheet(css)
         self.gridLayout_5.addWidget(self.label_sl_description, 0, 1, 1, 1)
 
@@ -98,7 +98,7 @@ class Ui_Dialog(object):
 
         self.label_pg_description = QtWidgets.QLabel(Dialog)
         self.label_pg_description.setObjectName(_fromUtf8("label_pg_description"))
-        self.label_pg_description.setText("Add tables to POSTGIS database")
+        self.label_pg_description.setText("Load POSTGIS database")
         self.label_pg_description.setStyleSheet(css)
         self.gridLayout_5.addWidget(self.label_pg_description, 5, 1, 1, 1)
 

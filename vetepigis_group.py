@@ -42,7 +42,7 @@ from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
 
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
-from .plugin import xabout, dbsetup, merge
+from .plugin import xabout, dbsetup, merge, dblogin, dbconnection
 from .resources_rc import *
 
 
@@ -89,23 +89,9 @@ class VetEpiGISgroup:
 
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
-
-        # mac = '_'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
-        # dbuid = 'db_%s.sqlite' % mac
-        # dbfold = os.path.join(self.plugin_dir, 'db')
-        # dbuidpath = os.path.join(dbfold, dbuid)
-        # if not os.path.isfile(dbuidpath):
-        #     shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbuidpath)
         #
         self.dbtype = ''
         self.dbpath = ''
-
-        # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-        # self.uri = QgsDataSourceURI()
-        # self.uri.setDatabase(dbuidpath)
-        #
-        # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-        # self.db.setDatabaseName(self.uri.database())
 
         self.obrflds = ['gid', 'localid', 'code', 'largescale', 'disease', 'animalno', 'species',
             'production', 'year', 'status', 'suspect', 'confirmation', 'expiration', 'notes',
@@ -114,6 +100,10 @@ class VetEpiGISgroup:
         self.poiflds.append('activity')
         self.poiflds.append('hrid')
         self.poiflds.append('geom')
+        self.sl_path_memorized = ''
+        self.pg_memorized =''
+
+        self.tableList = ['outbreaks_point','outbreaks_area','pois', 'buffers','zones','xdiseases','xpoitypes','xspecies','xstyles']
 
 
     # noinspection PyMethodMayBeStatic
@@ -149,6 +139,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSetdb)
         self.actSetdb.triggered.connect(self.setupDB)
 
+        self.actConndb = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/connection.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Load working database'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actConndb)
+        self.actConndb.triggered.connect(self.loadDB)
+
         self.actMerge = QAction(
             QIcon(':/plugins/VetEpiGISgroup/images/server-1.png'),
             QCoreApplication.translate('VetEpiGIS-Group', 'Merging databases'),
@@ -170,18 +167,25 @@ class VetEpiGISgroup:
 
         """Add buttons to the toolbar"""
 
-        self.toolbar.addAction(self.actSetdb)
-        self.toolbar.addAction(self.actMerge)
+        #self.toolbar.addAction(self.actSetdb)
+        #self.toolbar.addAction(self.actConndb)
+        #self.toolbar.addAction(self.actMerge)
         # self.toolbar.addAction(self.actExport)
 
-    # def exportLy(self):
-    #     dlg = export.Dialog()
-    #     dlg.setWindowTitle('Export layer')
-    #     x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
-    #     y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
-    #     dlg.move(x,y)
-    #     if dlg.exec_() == QDialog.Accepted:
-    #         j=1
+        self.grp1 = QToolButton(self.toolbar)
+        self.grp1.setPopupMode(QToolButton.MenuButtonPopup)
+        self.grp1.addActions([self.actSetdb, self.actConndb])
+        self.grp1.setDefaultAction(self.actSetdb)
+        self.toolbar.addWidget(self.grp1)
+
+        # self.grp2 = QToolButton(self.toolbar)
+        # self.grp2.setPopupMode(QToolButton.MenuButtonPopup)
+        # self.grp2.addActions([self.actMerge])
+        # self.grp2.setDefaultAction(self.actMerge)
+        # self.toolbar.addWidget(self.grp2)
+
+        self.toolbar.addAction(self.actMerge)
+
 
 
     def mergeDB(self):
@@ -1067,9 +1071,120 @@ class VetEpiGISgroup:
 
             QApplication.restoreOverrideCursor()
 
+    def loadDB(self):
+        tool_name = 'Load database'
+        dlg = dbconnection.Dialog()
+        dlg.setWindowTitle(tool_name)
+        dlg.plugin_dir = self.plugin_dir
+        x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
+        y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
+        dlg.move(x,y)
+
+        self.settings.beginGroup('PostgreSQL/connections')
+        PGconns = self.settings.childGroups()
+        for pg in PGconns:
+            dlg.comboBox_pg_db.addItem(pg)
+        self.settings.endGroup()
+
+        dlg.settings = self.settings
+
+        if dlg.exec_() == QDialog.Accepted:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            if dlg.radioButton_spatialite.isChecked():
+
+                self.ipath = dlg.lineEdit_spatialite.text()
+                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb.setDatabaseName(self.ipath)
+                if not idb.open():
+                    idb.open()
+                tablst = idb.tables()
+
+                for tab in self.tableList:
+                    if tab not in tablst:
+                        self.iface.messageBar().pushMessage(tool_name, "Database NOT loaded. One or more tables don't exist", level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
+                self.iface.messageBar().pushMessage(tool_name, "Database loaded. ", level=Qgis.Info, duration=10)
+                self.dbtype = 'spatialite'
+
+
+            elif dlg.radioButton_postgis.isChecked():
+                self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox_pg_db.currentText())
+                PGhost = self.settings.value('host', '')
+                PGport = self.settings.value('port', '')
+                PGdatabase = self.settings.value('database', '')
+                PGusername = self.settings.value('username', '')
+                PGpassword = self.settings.value('password', '')
+                self.settings.endGroup()
+
+                #check if pw and user exist
+                PGcon = None
+                if not PGusername or PGusername =='':
+                    dlg2 = dblogin.Dialog()
+                    dlg2.setWindowTitle('Set login')
+                    dlg2.plugin_dir = self.plugin_dir
+                    x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg2.width()/2
+                    y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg2.height()/2
+                    dlg2.move(x,y)
+
+                    if dlg2.exec_() == QDialog.Accepted:
+                        PGusername = dlg2.lineEdit_user.text()
+                        PGpassword = dlg2.lineEdit_pw.text()
+
+                        if (not PGusername or PGusername =='') or (not PGpassword or PGpassword ==''):
+                            self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                            QApplication.restoreOverrideCursor()
+                            return
+                    else:
+                        self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
+
+                try:
+                    PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
+                except Exception:
+                    PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
+
+                #check if database is spatial
+                # https://stackoverflow.com/questions/53462775/how-to-determine-if-postgis-is-enabled-on-a-database
+                cursor = PGcon.cursor()
+                try:
+                    sql = "SELECT PostGIS_version();"
+                    cursor.execute(sql)
+                except  psycopg2.Error as e:
+                    self.iface.messageBar().pushMessage(tool_name, 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
+                    PGcon.close()
+                    QApplication.restoreOverrideCursor()
+                    return
+
+                # Check if tables already exist
+                cursor = PGcon.cursor()
+                # https://www.dbrnd.com/2017/07/postgresql-different-options-to-check-if-table-exists-in-database-to_regclass/
+                # check on public schema
+                sql = """SELECT table_name
+                         FROM information_schema.tables
+                         WHERE table_schema = 'public'; """
+
+                cursor.execute(sql)
+                ret_q = cursor.fetchall()
+                table_q_list = []
+                for a in ret_q:
+                    table_q_list.append(a[0])
+
+                for tab in self.tableList:
+                    if tab not in table_q_list:
+                        self.iface.messageBar().pushMessage(tool_name, "Database NOT loaded. One or more tables don't exist", level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
+
+                self.iface.messageBar().pushMessage(tool_name, 'Database loaded.', level=Qgis.Info)
+                self.dbtype = 'postgis'
+
+            QApplication.restoreOverrideCursor()
 
 
     def setupDB(self):
+        tool_name = 'Setup working database'
         dlg = dbsetup.Dialog()
         dlg.setWindowTitle('Setup database connection')
         dlg.plugin_dir = self.plugin_dir
@@ -1080,7 +1195,7 @@ class VetEpiGISgroup:
         self.settings.beginGroup('PostgreSQL/connections')
         PGconns = self.settings.childGroups()
         for pg in PGconns:
-            dlg.comboBox.addItem(pg)
+            dlg.comboBox_pg_db.addItem(pg)
         self.settings.endGroup()
 
         dlg.settings = self.settings
@@ -1088,59 +1203,427 @@ class VetEpiGISgroup:
         if dlg.exec_() == QDialog.Accepted:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
-            if dlg.groupBox.isChecked():
+            if dlg.radioButton_spatialite.isChecked():
                 self.dbtype = 'spatialite'
-                # self.uri.setDatabase(dlg.lineEdit.text())
-                # self.db = QSqlDatabase.addDatabase('QSPATIALITE')
-                # self.db.setDatabaseName(dlg.lineEdit.text())
-                self.dbpath = dlg.lineEdit.text()
+                dbpath = dlg.lineEdit_spatialite.text()
+                ret_sl = self.createNewSLdb(dbpath)
+                if ret_sl:
+                    self.iface.messageBar().pushMessage(tool_name, 'Created database.', level=Qgis.Info)
+                    self.sl_path_memorized = dlg.comboBox_pg_db.currentText()
+                else:
+                    self.iface.messageBar().pushMessage(tool_name, 'Error creating database.', level=Qgis.Warning)
 
-            if dlg.groupBox_2.isChecked():
-                self.dbtype = 'postgis'
-                self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox.currentText())
-                self.PGhost = self.settings.value('host', '')
-                self.PGport = self.settings.value('port', '')
-                self.PGdatabase = self.settings.value('database', '')
-                self.PGusername = self.settings.value('username', '')
-                self.PGpassword = self.settings.value('password', '')
-                # self.iface.messageBar().pushMessage('Information',
-                #     self.PGhost + ', ' + self.PGport + ', ' + self.PGdatabase + ', ' + self.PGusername + ', ' + self.PGpassword, level=QgsMessageBar.INFO)
+            elif dlg.radioButton_postgis.isChecked():
+                self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox_pg_db.currentText())
+                PGhost = self.settings.value('host', '')
+                PGport = self.settings.value('port', '')
+                PGdatabase = self.settings.value('database', '')
+                PGusername = self.settings.value('username', '')
+                PGpassword = self.settings.value('password', '')
                 self.settings.endGroup()
-                # self.uri.setConnection(self.PGhost, str(self.PGport), self.PGdatabase, self.PGusername, self.PGpassword)
-# http://gis.stackexchange.com/questions/86707/how-to-perform-sql-queries-and-get-results-from-qgis-python-console
-#                 self.db = QSqlDatabase.addDatabase('QPSQL')
-#                 self.db.setHostName(self.PGhost)
-#                 self.db.setPort(int(self.PGport))
-#                 self.db.setDatabaseName(self.PGdatabase)
-#                 self.db.setUserName(self.PGusername)
-#                 self.db.setPassword(self.PGpassword)
-#
-#                 self.db.open()
-#                 query = QSqlQuery(self.db)
-#                 query.exec_("select * from kisterseg175;")
-#                 query.next()
-#                 self.iface.messageBar().pushMessage('Information', str(query.value(0)), level=QgsMessageBar.INFO)
-#                 self.db.close()
+
+                #check if pw and user exist
+                PGcon = None
+                if not PGusername or PGusername =='':
+                    dlg2 = dblogin.Dialog()
+                    dlg2.setWindowTitle('Set login')
+                    dlg2.plugin_dir = self.plugin_dir
+                    x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg2.width()/2
+                    y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg2.height()/2
+                    dlg2.move(x,y)
+
+                    if dlg2.exec_() == QDialog.Accepted:
+                        PGusername = dlg2.lineEdit_user.text()
+                        PGpassword = dlg2.lineEdit_pw.text()
+
+                        if (not PGusername or PGusername =='') or (not PGpassword or PGpassword ==''):
+                            self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                            QApplication.restoreOverrideCursor()
+                            return
+                    else:
+                        self.iface.messageBar().pushMessage(tool_name, 'Write user and password to connect to database', level=Qgis.Warning, duration=10)
+                        QApplication.restoreOverrideCursor()
+                        return
 
                 try:
-                    self.PGcon = psycopg2.connect(host=self.PGhost, port=self.PGport, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
-                except TypeError:
-                    self.PGcon = psycopg2.connect(host=self.PGhost, database=self.PGdatabase, user=self.PGusername, password=self.PGpassword)
+                    PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
+                except Exception:
+                    PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
 
-                # self.cursor = self.PGcon.cursor()
-                # sql = "select * from kisterseg175;"
-                # self.cursor.execute(sql)
-                # result = self.cursor.fetchone()
-                #
-                # self.iface.messageBar().pushMessage('Information', str(result[0]), level=QgsMessageBar.INFO)
+                #check if database is spatial
+                # https://stackoverflow.com/questions/53462775/how-to-determine-if-postgis-is-enabled-on-a-database
+                cursor = PGcon.cursor()
+                try:
+                    sql = "SELECT PostGIS_version();"
+                    cursor.execute(sql)
+                except  psycopg2.Error as e:
+                    self.iface.messageBar().pushMessage(tool_name, 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
+                    PGcon.close()
+                    QApplication.restoreOverrideCursor()
+                    return
 
-            self.iface.messageBar().pushMessage('Information', 'Database connection is ready.', level=Qgis.Info)
+                # Check if tables already exist
+                cursor = PGcon.cursor()
+                # https://www.dbrnd.com/2017/07/postgresql-different-options-to-check-if-table-exists-in-database-to_regclass/
+                # check on public schema
+                sql = """SELECT EXISTS (
+                            SELECT 1
+                            FROM information_schema.tables
+                            WHERE table_schema = 'public'
+                            AND (table_name = 'outbreaks_point'
+                                OR table_name = 'outbreaks_area'
+                                OR table_name = 'pois'
+                                OR table_name = 'buffers'
+                                OR table_name = 'zones'
+                                OR table_name = 'xdiseases'
+                                OR table_name = 'xpoitypes'
+                                OR table_name = 'xspecies'
+                                OR table_name = 'xstyles')); """
+
+                cursor.execute(sql)
+                ret_q = cursor.fetchone()
+                # if a table already exist end the tool
+                if ret_q[0]:
+                    self.iface.messageBar().clearWidgets()
+                    self.iface.messageBar().pushMessage(tool_name, 'Tables already exist. No tables were added to database', level=Qgis.Warning, duration=10)
+                else:
+                    ret_pg = self.createPGtables(PGdatabase, PGcon)
+                    if ret_pg:
+                        self.iface.messageBar().pushMessage(tool_name, 'Added tables to database.', level=Qgis.Info)
+                        self.pg_memorized = dlg.comboBox_pg_db.currentText()
+                    else:
+                        self.iface.messageBar().pushMessage(tool_name, 'Error adding tables database.', level=Qgis.Warning)
+
             QApplication.restoreOverrideCursor()
 
 
-    # def __del__(self):
-    #     self.PGcon.close()
+    def createNewSLdb(self, fileName):
+        #↓fileName = QFileDialog.getSaveFileName(self, caption='Create new SpatiaLite database')
+        #fileName = fileName[0]
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            #file = QFile(fileName + '.sqlite')
+            file = fileName
+            dbpath = QFileInfo(file).absoluteFilePath()
+            dbfold = os.path.join(self.plugin_dir, 'db')
+            if not os.path.isfile(dbpath):
+                shutil.copy(os.path.join(dbfold, 'base.sqlite'), dbpath)
+                #self.lineEdit_spatialite.setText(dbpath)
 
+                db = QSqlDatabase.addDatabase('QSPATIALITE')
+                db.setDatabaseName(dbpath)
+                db.open()
+                query = db.exec_(
+                """
+                    CREATE TABLE outbreaks_point (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text,
+                      grouping text
+                    );
+                """
+                )
+                query = db.exec_("SELECT AddGeometryColumn('outbreaks_point', 'geom', 4326, 'POINT', 'XY');")
+                query = db.exec_(
+                """
+                    CREATE TABLE outbreaks_area (
+                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      localid text,
+                      code text,
+                      largescale text,
+                      disease text,
+                      animalno numeric,
+                      species text,
+                      production text,
+                      year numeric,
+                      status text,
+                      suspect text,
+                      confirmation text,
+                      expiration text,
+                      notes text,
+                      hrid text,
+                      timestamp text,
+                      grouping text
+                    );
+                """
+                )
+                query = db.exec_("SELECT AddGeometryColumn('outbreaks_area', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                query = db.exec_(
+                """
+                CREATE TABLE pois (
+                  gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                  localid text,
+                  code text,
+                  activity text,
+                  hrid text
+                );
+                """)
+                query = db.exec_("SELECT AddGeometryColumn('pois', 'geom', 4326, 'POINT', 'XY');")
+                query = db.exec_(
+                """
+                CREATE TABLE buffers (
+                  gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                  localid text,
+                  code text,
+                  largescale text,
+                  disease text,
+                  animalno numeric,
+                  species text,
+                  production text,
+                  year numeric,
+                  status text,
+                  suspect text,
+                  confirmation text,
+                  expiration text,
+                  notes text,
+                  hrid text,
+                  timestamp text
+                );
+                """)
+                query = db.exec_("SELECT AddGeometryColumn('buffers', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                query = db.exec_(
+                """
+                CREATE TABLE zones (
+                  gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                  localid text,
+                  code text,
+                  disease text,
+                  zonetype text,
+                  subpopulation text,
+                  validity_start text,
+                  validity_end text,
+                  legal_framework text,
+                  competent_authority text,
+                  biosecurity_measures text,
+                  control_of_vectors text,
+                  control_of_wildlife_reservoir text,
+                  modified_stamping_out text,
+                  movement_restriction text,
+                  stamping_out text,
+                  surveillance text,
+                  vaccination text,
+                  other_measure text,
+                  related text,
+                  hrid text,
+                  timestamp text
+                );
+                """)
+                query = db.exec_("SELECT AddGeometryColumn('zones', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                db.close()
+
+            QApplication.restoreOverrideCursor()
+            return True
+        except IOError:
+            QApplication.restoreOverrideCursor()
+            return False
+
+
+    def createPGtables(self, db_name, PGcon):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+
+            cursor = PGcon.cursor()
+            sql = """
+
+                CREATE TABLE outbreaks_point (
+                gid serial NOT NULL,
+                localid character varying(254),
+                code character varying(254),
+                largescale character varying(254),
+                disease character varying(254),
+                animalno integer,
+                species character varying(254),
+                production character varying(254),
+                year integer,
+                status character varying(254),
+                suspect character varying(254),
+                confirmation character varying(254),
+                expiration character varying(254),
+                notes character varying(254),
+                hrid character varying(254),
+                timestamp character varying(254),
+                grouping character varying(254),
+                geom geometry,
+                CONSTRAINT outbreaks_point_pkey PRIMARY KEY (gid),
+                CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+                CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE outbreaks_area (
+                gid serial NOT NULL,
+                localid character varying(254),
+                code character varying(254),
+                largescale character varying(254),
+                disease character varying(254),
+                animalno integer,
+                species character varying(254),
+                production character varying(254),
+                year integer,
+                status character varying(254),
+                suspect character varying(254),
+                confirmation character varying(254),
+                expiration character varying(254),
+                notes character varying(254),
+                hrid character varying(254),
+                timestamp character varying(254),
+                grouping character varying(254),
+                geom geometry,
+                CONSTRAINT outbreaks_area_pkey PRIMARY KEY (gid),
+                CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE pois (
+                gid serial NOT NULL,
+                localid character varying(254),
+                code character varying(254),
+                activity character varying(254),
+                hrid character varying(254),
+                geom geometry,
+                CONSTRAINT pois_pkey PRIMARY KEY (gid),
+                CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POINT'::text OR geom IS NULL),
+                CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE buffers (
+                gid serial NOT NULL,
+                localid character varying(254),
+                code character varying(254),
+                largescale character varying(254),
+                disease character varying(254),
+                animalno integer,
+                species character varying(254),
+                production character varying(254),
+                year integer,
+                status character varying(254),
+                suspect character varying(254),
+                confirmation character varying(254),
+                expiration character varying(254),
+                notes character varying(254),
+                hrid character varying(254),
+                timestamp character varying(254),
+                geom geometry,
+                CONSTRAINT buffers_pkey PRIMARY KEY (gid),
+                CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE zones (
+                gid serial NOT NULL,
+                localid character varying(254),
+                code character varying(254),
+                disease character varying(254),
+                zonetype character varying(254),
+                subpopulation character varying(254),
+                validity_start character varying(254),
+                validity_end character varying(254),
+                legal_framework character varying(254),
+                competent_authority character varying(254),
+                biosecurity_measures character varying(254),
+                control_of_vectors character varying(254),
+                control_of_wildlife_reservoir character varying(254),
+                modified_stamping_out character varying(254),
+                movement_restriction character varying(254),
+                stamping_out character varying(254),
+                surveillance character varying(254),
+                vaccination character varying(254),
+                other_measure character varying(254),
+                related character varying(254),
+                hrid character varying(254),
+                timestamp character varying(254),
+                geom geometry,
+                CONSTRAINT zones_pkey PRIMARY KEY (gid),
+                CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2),
+                CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL),
+                CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
+                );
+                CREATE TABLE xdiseases (
+                id serial NOT NULL,
+                disease character varying(254),
+                lang character varying(254),
+                enid integer, CONSTRAINT xdiseases_pkey PRIMARY KEY (id)
+                );
+                CREATE TABLE xpoitypes (
+                id serial NOT NULL,
+                poitype character varying(254),
+                lang character varying(254),
+                enid integer, CONSTRAINT xpoitypes_pkey PRIMARY KEY (id)
+                );
+                CREATE TABLE xspecies (
+                id serial NOT NULL,
+                species character varying(254),
+                lang character varying(254),
+                enid integer, CONSTRAINT xspecies_pkey PRIMARY KEY (id)
+                );
+                CREATE TABLE xstyles (
+                id serial NOT NULL,
+                ltype character varying(254),
+                sld character varying(254), CONSTRAINT xstyles_pkey PRIMARY KEY (id)
+                );
+                """
+            cursor.execute(sql)
+
+            PGcon.commit()
+
+            # uri = QgsDataSourceURI()
+            # uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
+            db = QSqlDatabase.addDatabase('QSPATIALITE')
+            # db.setDatabaseName(uri.database())
+            db.setDatabaseName(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
+
+            if not db.open():
+                db.open()
+
+            sql = ''
+            query = db.exec_('select * from xdiseases')
+            while query.next():
+                sql = sql + """insert into xdiseases (disease, lang) values('%s', '%s');""" % \
+                    (query.value(1).replace("'", "''"), query.value(2))
+            cursor.execute(sql)
+
+            sql = ''
+            query = db.exec_('select * from xpoitypes')
+            while query.next():
+                sql = sql + "insert into xpoitypes (poitype, lang) values('%s', '%s');" % \
+                    (query.value(1), query.value(2))
+            cursor.execute(sql)
+
+            sql = ''
+            query = db.exec_('select * from xspecies')
+            while query.next():
+                sql = sql + "insert into xspecies (species, lang) values('%s', '%s');" % \
+                    (query.value(1), query.value(2))
+            cursor.execute(sql)
+
+            sql = ''
+            query = db.exec_('select * from xstyles')
+            while query.next():
+                sql = sql + "insert into xstyles (ltype, sld) values('%s', '%s');" % \
+                            (query.value(1), query.value(2))
+            cursor.execute(sql)
+
+            PGcon.commit()
+            db.close()
+
+            QApplication.restoreOverrideCursor()
+
+            return True
+        except IOError:
+            QApplication.restoreOverrideCursor()
+            return False
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""

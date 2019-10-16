@@ -14,6 +14,29 @@
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_5">
+   <item row="2" column="0">
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>5</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="4" column="0">
+    <widget class="QRadioButton" name="radioButton_postgis">
+     <property name="text">
+      <string>PostGIS</string>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0">
     <widget class="QRadioButton" name="radioButton_spatialbutton">
      <property name="enabled">
@@ -30,26 +53,6 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
-    <widget class="Line" name="line">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>0</height>
-      </size>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0">
-    <widget class="QRadioButton" name="radioButton_postgis">
-     <property name="text">
-      <string>PostGIS</string>
-     </property>
-    </widget>
-   </item>
    <item row="6" column="0">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
@@ -57,13 +60,6 @@
      </property>
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>TextLabel</string>
      </property>
     </widget>
    </item>
@@ -127,6 +123,19 @@
      </layout>
     </widget>
    </item>
+   <item row="3" column="0">
+    <widget class="Line" name="line">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
    <item row="5" column="0">
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
@@ -169,21 +178,19 @@
      </layout>
     </widget>
    </item>
-   <item row="2" column="0">
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
+   <item row="0" column="1">
+    <widget class="QLabel" name="label_sl_description">
+     <property name="text">
+      <string>...</string>
      </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QLabel" name="label_pg_description">
+     <property name="text">
+      <string>TextLabel</string>
      </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>5</height>
-      </size>
-     </property>
-    </spacer>
+    </widget>
    </item>
   </layout>
  </widget>

@@ -25,10 +25,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import pyqtSignal, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
     pyqtSignal, QRegExp, QDateTime, QTranslator, QFile, QDir, QIODevice, QTextStream
 
-from PyQt5.QtWidgets import *
-
-from qgis.core import QgsDataSourceUri
 from PyQt5.QtSql import *
+from PyQt5.QtWidgets import QDialog, QFileDialog
 
 import psycopg2
 import psycopg2.extensions
@@ -36,7 +34,7 @@ import psycopg2.extensions
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
-from .dbsetup_dialog import Ui_Dialog
+from .dblogin_dialog import Ui_Dialog
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -48,40 +46,18 @@ class Dialog(QDialog, Ui_Dialog):
         QDialog.__init__(self)
 
         self.setupUi(self)
-        self.plugin_dir = ''
-        self.settings = ''
 
-        #self.comboBox_pg_db.currentIndexChanged.connect(self.seltype)
-        #self.commandLinkButton.clicked.connect(self.createNewSLdb)
-        self.toolButton_sl_db.clicked.connect(self.dbSource)
+        self.accepted.connect(self.checkValues)
 
-        self.radioButton_spatialite.clicked.connect(self.seltype)
-        self.radioButton_postgis.clicked.connect(self.seltype)
+    def checkValues(self):
+        username = self.lineEdit_user.text()
+        pw = self.lineEdit_pw.text()
 
-        #self.commandLinkButton_2.clicked.connect(self.createPGtables)
+        if not username or username =='':
+            self.lineEdit_user.setText('')
 
-        # self.lineEdit.setText('/home/sn/dev/QGISplugins/VetEpiGIS/groupdata/c.sqlite')
-
-
-    def dbSource(self):
-        dbpath = QFileDialog.getSaveFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
-        dbpath = dbpath[0]
-        if not dbpath or dbpath =='':
-          self.lineEdit_spatialite.setText('')
-        else:
-          self.lineEdit_spatialite.setText(dbpath)
-
-
-    def seltype(self):
-        if self.radioButton_spatialite.isChecked():
-            self.groupBox_postgis.setEnabled(False)
-            self.groupBox_spatialite.setEnabled(True)
-            self.radioButton_postgis.setChecked(False)
-
-        if self.radioButton_postgis.isChecked():
-            self.groupBox_spatialite.setEnabled(False)
-            self.groupBox_postgis.setEnabled(True)
-            self.radioButton_spatialite.setChecked(False)
+        if not pw or pw =='':
+            self.lineEdit_pw.setText('')
 
 
 
