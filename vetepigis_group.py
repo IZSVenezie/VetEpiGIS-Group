@@ -444,7 +444,7 @@ class VetEpiGISgroup:
             cursor = self.PGcon.cursor()
             cursor.execute(sqlHrid)
             res = cursor.fetchall()
-            for r in len(res):
+            for r in res:
                 hrid_list.append(r[0])
 
 
