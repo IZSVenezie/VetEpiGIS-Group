@@ -309,10 +309,12 @@ class VetEpiGISgroup:
             #check if selected feature already exist in WD
             exist_hrid = False
             overwrite_answer = False
+            hrid_list = self.getHridFromWDB(layer_type.value)
             for sf in sfeats:
                 hrid = sf.attribute('hrid')
-                check_exist = self.existHrid(layer_type.value,hrid)
-                if check_exist == True:
+                if hrid in hrid_list:
+                #check_exist = self.existHrid(layer_type.value,hrid)
+                #if check_exist == True:
                     exist_hrid = True
                     break
 
@@ -328,9 +330,11 @@ class VetEpiGISgroup:
             if self.dbtype == 'postgis':
                 sql = ''
                 for sf in sfeats:
+                    check_exist = False
                     #get hrid of selected feature
                     hrid = sf.attribute('hrid')
-                    check_exist = self.existHrid(layer_type.value,hrid)
+                    if hrid in hrid_list:
+                        check_exist = True
 
                     #Feature is not in WD --> insert feature
                     if check_exist == False:
@@ -355,6 +359,52 @@ class VetEpiGISgroup:
                 # #self.PGcon.close()
                 self.iface.messageBar().pushMessage(tool_name, \
                         'Features added to working database', level=Qgis.Info)
+
+            if self.dbtype == 'spatialite':
+
+                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb.setDatabaseName(self.ipath)
+                if not idb.open():
+                    idb.open()
+
+                sql = ''
+                for sf in sfeats:
+                    check_exist = False
+                    #get hrid of selected feature
+                    hrid = sf.attribute('hrid')
+                    if hrid in hrid_list:
+                        check_exist = True
+
+                    #Feature is not in WD --> insert feature
+                    if check_exist == False:
+                        sql = self.getInsertSQLPG(nslst, layer_type.value, sf)
+                        rs = idb.exec_(sql)
+
+                    #Feature in WD but not overwrite --> skip feature
+                    elif check_exist == True and overwrite_answer == False:
+                        continue
+
+                    #Feature in WD and overwrite --> update feature
+                    elif check_exist == True and overwrite_answer == True:
+
+                        sql = self.getUpdateSQLPG(nslst, layer_type.value, sf, hrid)
+                        rs = idb.exec_(sql)
+
+                #TODO: check if this control is ok here
+                if sql == '':
+                    self.iface.messageBar().pushMessage(tool_name, \
+                        "No features were added or modified in the Working database", level=Qgis.Info)
+                    return
+
+
+                rs = idb.exec_(sql)
+                idb.commit()
+                idb.close()
+
+                self.iface.messageBar().pushMessage(tool_name, \
+                        'Features added to working database', level=Qgis.Info)
+
+
 
     def getTableName(self, vet_layer_type):
         table = ''
@@ -384,6 +434,35 @@ class VetEpiGISgroup:
         else:
             return True
 
+    def getHridFromWDB(self, vet_layer_type):
+
+        hrid_list = []
+        tableName = self.getTableName(vet_layer_type)
+        sqlHrid = "SELECT hrid FROM %s ;" % (tableName)
+
+        if self.dbtype == 'postgis':
+            cursor = self.PGcon.cursor()
+            cursor.execute(sqlHrid)
+            res = cursor.fetchall()
+            for r in len(res):
+                hrid_list.append(r[0])
+
+
+        elif self.dbtype == 'spatialite':
+            idb = QSqlDatabase.addDatabase('QSPATIALITE')
+            idb.setDatabaseName(self.dbpath)
+            if not idb.open():
+                idb.open()
+
+            q = idb.exec_(sqlHrid)
+            while q.next():
+                hrid_list.append(q.value(0))
+
+            idb.close()
+
+        return hrid_list
+
+    #TODO: if table is empty
 
 
     def getInsertSQLPG(self, nslst, vet_layer_type, sf):
@@ -1674,10 +1753,10 @@ class VetEpiGISgroup:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if dlg.radioButton_spatialite.isChecked():
-                self.dbtype = 'spatialite'
-                dbpath = dlg.lineEdit_spatialite.text()
-                ret_sl = self.createNewSLdb(dbpath)
+                ret_sl = self.createNewSLdb(dlg.lineEdit_spatialite.text())
                 if ret_sl:
+                    self.dbtype = 'spatialite'
+                    self.dbpath = dlg.lineEdit_spatialite.text()
                     self.iface.messageBar().pushMessage(tool_name, 'Created database.', level=Qgis.Info)
                     self.sl_path_memorized = dlg.comboBox_pg_db.currentText()
                 else:
