@@ -28,6 +28,8 @@ import psycopg2.extensions
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
+from enum import Enum
+
 from PyQt5.QtGui import *
 from PyQt5.QtCore import pyqtSignal, Qt, QSettings, QCoreApplication, QFile, QFileInfo, QDate, QVariant, \
     pyqtSignal, QRegExp, QDateTime, QTranslator, QSize
@@ -38,11 +40,11 @@ from PyQt5.QtWidgets import *
 from qgis.core import QgsField, QgsSpatialIndex, QgsMessageLog, QgsProject, \
     QgsCoordinateTransform, QgsVectorFileWriter, QgsFeature, \
     QgsGeometry, QgsFeatureRequest, QgsPoint, QgsVectorLayer, QgsCoordinateReferenceSystem, \
-    QgsRectangle, QgsDataSourceUri, QgsDataProvider, QgsLayout, QgsLayoutItem, Qgis
+    QgsRectangle, QgsDataSourceUri, QgsDataProvider, QgsLayout, QgsLayoutItem, Qgis, QgsWkbTypes
 
 from qgis.gui import QgsMapTool, QgsMapToolEmitPoint, QgsMessageBar, QgsRubberBand
 
-from .plugin import xabout, dbsetup, merge, dblogin, dbconnection
+from .plugin import xabout, dbsetup, merge, dblogin, dbconnection, selitem
 from .resources_rc import *
 
 
@@ -95,15 +97,36 @@ class VetEpiGISgroup:
 
         self.obrflds = ['gid', 'localid', 'code', 'largescale', 'disease', 'animalno', 'species',
             'production', 'year', 'status', 'suspect', 'confirmation', 'expiration', 'notes',
-            'hrid', 'timestamp', 'grouping', 'geom']
+            'hrid', 'timestamp', 'grouping']
         self.poiflds = self.obrflds[0:3]
         self.poiflds.append('activity')
         self.poiflds.append('hrid')
-        self.poiflds.append('geom')
         self.sl_path_memorized = ''
         self.pg_memorized =''
-
+        self.zonelfds = []
+        self.pg_user = ''
+        self.pg_pw = ''
         self.tableList = ['outbreaks_point','outbreaks_area','pois', 'buffers','zones','xdiseases','xpoitypes','xspecies','xstyles']
+
+        #fields of layers in local db
+        self.obr_pt_poly_flds = ['gid', 'localid', 'code', 'largescale', 'disease', 'animalno', 'species',
+            'production', 'year', 'status', 'suspect', 'confirmation', 'expiration', 'notes',
+            'hrid', 'timestamp', 'grouping']
+        self.buff_flds = ['gid', 'localid', 'code', 'largescale', 'disease', 'animalno', 'species',
+            'production', 'year', 'status', 'suspect', 'confirmation', 'expiration', 'notes',
+            'hrid', 'timestamp']
+
+        self.poi_pt_flds = self.obr_pt_poly_flds [0:3]
+        self.poi_pt_flds.append('activity')
+        self.poi_pt_flds.append('hrid')
+
+        self.zone_poly_flds = ['localid', 'code', 'disease', 'zonetype', 'subpopulation', 'validity_start', \
+                'validity_end', 'legal_framework', 'competent_authority', 'biosecurity_measures', \
+                'control_of_vectors', 'control_of_wildlife_reservoir', 'modified_stamping_out', \
+                'movement_restriction', 'stamping_out', 'surveillance', 'vaccination', \
+                'other_measure', 'related', 'hrid', 'timestamp']
+
+
 
 
     # noinspection PyMethodMayBeStatic
@@ -153,6 +176,13 @@ class VetEpiGISgroup:
         self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actMerge)
         self.actMerge.triggered.connect(self.mergeDB)
 
+        self.actSelMerge = QAction(
+            QIcon(':/plugins/VetEpiGISgroup/images/server-2.png'),
+            QCoreApplication.translate('VetEpiGIS-Group', 'Merging databases from selected feature'),
+            self.iface.mainWindow())
+        self.iface.addPluginToMenu('&VetEpiGIS-Group', self.actSelMerge)
+        self.actSelMerge.triggered.connect(self.mergeSelItem)
+
         # self.actExport = QAction(
         #     QIcon(':/plugins/VetEpiGISgroup/images/export.png'),
         #     QCoreApplication.translate('VetEpiGIS-Group', 'Export layers'),
@@ -178,14 +208,530 @@ class VetEpiGISgroup:
         self.grp1.setDefaultAction(self.actSetdb)
         self.toolbar.addWidget(self.grp1)
 
-        # self.grp2 = QToolButton(self.toolbar)
-        # self.grp2.setPopupMode(QToolButton.MenuButtonPopup)
-        # self.grp2.addActions([self.actMerge])
-        # self.grp2.setDefaultAction(self.actMerge)
-        # self.toolbar.addWidget(self.grp2)
+        self.grp2 = QToolButton(self.toolbar)
+        self.grp2.setPopupMode(QToolButton.MenuButtonPopup)
+        self.grp2.addActions([self.actMerge, self.actSelMerge])
+        self.grp2.setDefaultAction(self.actMerge)
+        self.toolbar.addWidget(self.grp2)
 
-        self.toolbar.addAction(self.actMerge)
 
+
+    def mergeSelItem(self):
+        self.grp2.setDefaultAction(self.actSelMerge)
+
+        tool_name = 'Add selected item to Working DB'
+        #Check if working database is selected
+        if (not self.dbpath or self.dbtype =='') or (not self.dbtype or self.dbtype ==''):
+            self.iface.messageBar().pushMessage(tool_name, 'Before continuing, select the working database with \
+                "Setup workind directory" or "Load working directory" tools.', level=Qgis.Warning)
+            return
+
+        #check if there are feature selected
+        if QgsProject.instance().count()==0:
+            self.iface.messageBar().pushMessage(tool_name, \
+                'Please add a vector layer.', level=Qgis.Warning)
+            # QMessageBox.warning(self.iface.mainWindow(),
+            #     "Warning", "Please add a vector layer.",
+            #     buttons=QMessageBox.Ok, defaultButton=QMessageBox.NoButton)
+            return
+
+        mLayer = self.iface.activeLayer()
+        if mLayer is None:
+            self.iface.messageBar().pushMessage(tool_name, \
+                'Please select an input layer.', level=Qgis.Warning)
+            # QMessageBox.warning(self.iface.mainWindow(),
+            #     "Warning", "Please select an input layer.",
+            #     buttons=QMessageBox.Ok, defaultButton=QMessageBox.NoButton)
+            return
+
+        if mLayer.type()!=0:
+            self.iface.messageBar().pushMessage(tool_name, \
+                'Please select a vector layer.', level=Qgis.Warning)
+            # QMessageBox.warning(self.iface.mainWindow(),
+            #     "Warning", "Please select a vector layer.",
+            #     buttons=QMessageBox.Ok, defaultButton=QMessageBox.NoButton)
+            return
+
+        if mLayer.selectedFeatureCount()==0:
+            self.iface.messageBar().pushMessage(tool_name, \
+                'Select one or more features for selected layer.', level=Qgis.Warning)
+            # QMessageBox.warning(self.iface.mainWindow(),
+            #     "Warning", "Select one or more features for selected layer",
+            #     buttons=QMessageBox.Ok, defaultButton=QMessageBox.NoButton)
+            return
+
+        c = 0
+        nslst = []
+        prvsrc = mLayer.dataProvider()
+        flds = prvsrc.fields()
+        for fld in flds:
+            nslst.append(fld.name())
+
+        #Check geometry type and its relative fields
+        if mLayer.geometryType() == QgsWkbTypes.PointGeometry:
+            #outbreak or poi
+            if nslst == self.obr_pt_poly_flds:
+                c = 1
+                layer_type = VetLayerType.OUT_PT
+            elif nslst==self.poi_pt_flds:
+                c = 1
+                layer_type = VetLayerType.POI_PT
+        elif mLayer.geometryType() == QgsWkbTypes.PolygonGeometry:
+            #outbreak, outbreaks buffer, poi buffer, zone
+            if nslst == self.obr_pt_poly_flds:
+                c = 1
+                layer_type = VetLayerType.OUT_POLY
+            elif nslst == self.buff_flds:
+                c = 1
+                layer_type = VetLayerType.BUFFER_OUT
+            elif nslst==self.zone_poly_flds:
+                c = 1
+                layer_type = VetLayerType.ZONE
+
+        if c == 0:
+            self.iface.messageBar().pushMessage(tool_name, \
+                'The selected layer is not compliant with VetEPIGIS-Tool layers.', level=Qgis.Warning)
+            return
+
+        #get selected feature
+        dlg = selitem.Dialog(self.dbpath, self.dbtype,mLayer.selectedFeatureCount())
+
+        dlg.setWindowTitle(tool_name)
+        # dlg.plugin_dir = self.plugin_dir
+        x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
+        y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
+        dlg.move(x,y)
+
+        if dlg.exec_() == QDialog.Accepted:
+
+            sfeats = mLayer.selectedFeatures()
+
+            #check if selected feature already exist in WD
+            exist_hrid = False
+            overwrite_answer = False
+            hrid_list = self.getHridFromWDB(layer_type.value)
+            for sf in sfeats:
+                hrid = sf.attribute('hrid')
+                if hrid in hrid_list:
+                #check_exist = self.existHrid(layer_type.value,hrid)
+                #if check_exist == True:
+                    exist_hrid = True
+                    break
+
+            if dlg.checkBox.isChecked() and exist_hrid == True:
+                #message box for overwrite features
+                overwrite_msg = QMessageBox.question(self.iface.mainWindow(),
+                    "Warning", "Are you sure to overwrite features?",
+                    QMessageBox.Ok, QMessageBox.No)
+                #if ok overwrite
+                if overwrite_msg == QMessageBox.Ok:
+                    overwrite_answer = True
+
+            if self.dbtype == 'postgis':
+                sql = ''
+                for sf in sfeats:
+                    check_exist = False
+                    #get hrid of selected feature
+                    hrid = sf.attribute('hrid')
+                    if hrid in hrid_list:
+                        check_exist = True
+
+                    #Feature is not in WD --> insert feature
+                    if check_exist == False:
+                        sql = sql + self.getInsertSQLPG(nslst, layer_type.value, sf)
+
+                    #Feature in WD but not overwrite --> skip feature
+                    elif check_exist == True and overwrite_answer == False:
+                        continue
+
+                    #Feature in WD and overwrite --> update feature
+                    elif check_exist == True and overwrite_answer == True:
+                        sql = sql + self.getUpdateSQLPG(nslst, layer_type.value, sf, hrid)
+
+                if sql == '':
+                    self.iface.messageBar().pushMessage(tool_name, \
+                        "No features were added or modified in the Working database", level=Qgis.Info)
+                    return
+
+                cursor = self.PGcon.cursor()
+                cursor.execute(sql)
+                self.PGcon.commit()
+                # #self.PGcon.close()
+                self.iface.messageBar().pushMessage(tool_name, \
+                        'Features added to working database', level=Qgis.Info)
+
+            if self.dbtype == 'spatialite':
+
+                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb.setDatabaseName(self.ipath)
+                if not idb.open():
+                    idb.open()
+
+                sql = ''
+                for sf in sfeats:
+                    check_exist = False
+                    #get hrid of selected feature
+                    hrid = sf.attribute('hrid')
+                    if hrid in hrid_list:
+                        check_exist = True
+
+                    #Feature is not in WD --> insert feature
+                    if check_exist == False:
+                        sql = self.getInsertSQLPG(nslst, layer_type.value, sf)
+                        rs = idb.exec_(sql)
+
+                    #Feature in WD but not overwrite --> skip feature
+                    elif check_exist == True and overwrite_answer == False:
+                        continue
+
+                    #Feature in WD and overwrite --> update feature
+                    elif check_exist == True and overwrite_answer == True:
+
+                        sql = self.getUpdateSQLPG(nslst, layer_type.value, sf, hrid)
+                        rs = idb.exec_(sql)
+
+                #TODO: check if this control is ok here
+                if sql == '':
+                    self.iface.messageBar().pushMessage(tool_name, \
+                        "No features were added or modified in the Working database", level=Qgis.Info)
+                    return
+
+
+                rs = idb.exec_(sql)
+                idb.commit()
+                idb.close()
+
+                self.iface.messageBar().pushMessage(tool_name, \
+                        'Features added to working database', level=Qgis.Info)
+
+
+
+    def getTableName(self, vet_layer_type):
+        table = ''
+        if vet_layer_type == VetLayerType.OUT_PT.value:
+            table = 'outbreaks_point'
+        elif vet_layer_type == VetLayerType.POI_PT.value:
+            table = 'pois'
+        elif vet_layer_type == VetLayerType.OUT_POLY.value:
+            table = 'outbreaks_area'
+        elif vet_layer_type == VetLayerType.BUFFER_OUT.value:
+            table = 'buffers'
+        elif vet_layer_type == VetLayerType.ZONE.value:
+            table = 'zones'
+        return table
+
+    # def existHrid(self, vet_layer_type, hrid):
+    #     #The function return false if hrid not already exist
+    #     cursor = self.PGcon.cursor()
+    #     tableName = self.getTableName(vet_layer_type)
+
+    #     sqlHrid = "SELECT count(hrid) FROM %s WHERE hrid = '%s'" % (tableName, hrid)
+
+    #     cursor.execute(sqlHrid)
+    #     res = cursor.fetchone()
+    #     if res[0] == 0:
+    #         return False
+    #     else:
+    #         return True
+
+    def getHridFromWDB(self, vet_layer_type):
+
+        hrid_list = []
+        tableName = self.getTableName(vet_layer_type)
+        sqlHrid = "SELECT hrid FROM %s ;" % (tableName)
+
+        if self.dbtype == 'postgis':
+            cursor = self.PGcon.cursor()
+            cursor.execute(sqlHrid)
+            res = cursor.fetchall()
+            for r in res:
+                hrid_list.append(r[0])
+
+
+        elif self.dbtype == 'spatialite':
+            idb = QSqlDatabase.addDatabase('QSPATIALITE')
+            idb.setDatabaseName(self.dbpath)
+            if not idb.open():
+                idb.open()
+
+            q = idb.exec_(sqlHrid)
+            while q.next():
+                hrid_list.append(q.value(0))
+
+            idb.close()
+        #TODO: if table is empty
+        return hrid_list
+
+
+
+
+    def getInsertSQLPG(self, nslst, vet_layer_type, sf):
+        #outbreak point or poi
+        if vet_layer_type == VetLayerType.OUT_PT.value:
+            sql = """INSERT INTO outbreaks_point (localid, code, largescale, disease,
+                animalno, species, production, year, status, suspect, confirmation,
+                expiration, notes, hrid, timestamp, grouping, geom)
+                VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                    '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
+                % (
+                    sf.attribute('localid'),
+                    sf.attribute('code'),
+                    sf.attribute('largescale'),
+                    sf.attribute('disease'),
+                    sf.attribute('animalno'),
+                    sf.attribute('species'),
+                    sf.attribute('production'),
+                    sf.attribute('year'),
+                    sf.attribute('status'),
+                    sf.attribute('suspect'),
+                    sf.attribute('confirmation'),
+                    sf.attribute('expiration'),
+                    sf.attribute('notes'),
+                    sf.attribute('hrid'),
+                    sf.attribute('timestamp'),
+                    sf.attribute('grouping'),
+                    sf.geometry().asWkt()
+                )
+
+        elif vet_layer_type == VetLayerType.POI_PT.value:
+            sql = """INSERT INTO pois (localid, code, activity, hrid, geom)
+                VALUES ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
+                % (
+                    sf.attribute('localid'),
+                    sf.attribute('code'),
+                    sf.attribute('activity'),
+                    sf.attribute('hrid'),
+                    sf.geometry().asWkt()
+                )
+
+        if vet_layer_type == VetLayerType.OUT_POLY.value:
+            # outbreaks_area is a polygon (simple)
+            # outbreaks_area have to be converted to multipolygon
+            tmp = sf.geometry().convertToType(QgsWkbTypes.PolygonGeometry, True)
+            sql = """INSERT INTO outbreaks_area(localid, code, largescale, disease,
+                    animalno, species, production, year, status, suspect, confirmation,
+                    expiration, notes, hrid, timestamp, grouping, geom)
+                    VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                        '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
+                    % (
+                        sf.attribute('localid'),
+                        sf.attribute('code'),
+                        sf.attribute('largescale'),
+                        sf.attribute('disease'),
+                        sf.attribute('animalno'),
+                        sf.attribute('species'),
+                        sf.attribute('production'),
+                        sf.attribute('year'),
+                        sf.attribute('status'),
+                        sf.attribute('suspect'),
+                        sf.attribute('confirmation'),
+                        sf.attribute('expiration'),
+                        sf.attribute('notes'),
+                        sf.attribute('hrid'),
+                        sf.attribute('timestamp'),
+                        sf.attribute('grouping'),
+                        tmp.asWkt()
+                    )
+        elif vet_layer_type == VetLayerType.BUFFER_OUT.value:
+            sql = """INSERT INTO buffers (localid, code, largescale, disease,
+                    animalno, species, production, year, status, suspect, confirmation,
+                    expiration, notes, hrid, timestamp, geom)
+                    VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                        '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
+                    % (
+                        sf.attribute('localid'),
+                        sf.attribute('code'),
+                        sf.attribute('largescale'),
+                        sf.attribute('disease'),
+                        sf.attribute('animalno'),
+                        sf.attribute('species'),
+                        sf.attribute('production'),
+                        sf.attribute('year'),
+                        sf.attribute('status'),
+                        sf.attribute('suspect'),
+                        sf.attribute('confirmation'),
+                        sf.attribute('expiration'),
+                        sf.attribute('notes'),
+                        sf.attribute('hrid'),
+                        sf.attribute('timestamp'),
+                        sf.geometry().asWkt()
+                    )
+        # elif nslst == self.poi_pt_buf_flds:
+        #     sql = """INSERT INTO poi (localid, code, activity, hrid, geom)
+        #         VALUES ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
+        #         % (
+        #             sf.attribute('localid'),
+        #             sf.attribute('code'),
+        #             sf.attribute('activity'),
+        #             sf.attribute('hrid'),
+        #             sf.geometry().asWkt()
+        #         )
+        elif vet_layer_type == VetLayerType.ZONE.value:
+            sql = """INSERT INTO zones (localid, code, disease, zonetype, subpopulation, validity_start,
+                        validity_end, legal_framework, competent_authority, biosecurity_measures,
+                        control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out,
+                        movement_restriction, stamping_out, surveillance, vaccination,
+                        other_measure, related, hrid, timestamp, geom)
+                    VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                        '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
+                % (
+                    sf.attribute('localid'),
+                    sf.attribute('code'),
+                    sf.attribute('disease'),
+                    sf.attribute('zonetype'),
+                    sf.attribute('subpopulation'),
+                    sf.attribute('validity_start'),
+                    sf.attribute('validity_end'),
+                    sf.attribute('legal_framework'),
+                    sf.attribute('competent_authority'),
+                    sf.attribute('biosecurity_measures'),
+                    sf.attribute('control_of_vectors'),
+                    sf.attribute('control_of_wildlife_reservoir'),
+                    sf.attribute('modified_stamping_out'),
+                    sf.attribute('movement_restriction'),
+                    sf.attribute('stamping_out'),
+                    sf.attribute('surveillance'),
+                    sf.attribute('vaccination'),
+                    sf.attribute('other_measure'),
+                    sf.attribute('related'),
+                    sf.attribute('hrid'),
+                    sf.attribute('timestamp'),
+                    sf.geometry().asWkt()
+                )
+        return sql
+
+
+    def getUpdateSQLPG(self, nslst, vet_layer_type, sf, hrid):
+        #outbreak point or poi
+        if vet_layer_type == VetLayerType.OUT_PT.value:
+            #I don't update hrid
+            sql = """UPDATE outbreaks_point
+                     SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
+                        animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
+                        suspect = '%s', confirmation = '%s', expiration = '%s', notes = '%s',
+                        timestamp = '%s', grouping = '%s', geom = ST_GeomFromText('%s', 4326)
+                     WHERE hrid = '%s';""" \
+                % (
+                    sf.attribute('localid'),
+                    sf.attribute('code'),
+                    sf.attribute('largescale'),
+                    sf.attribute('disease'),
+                    sf.attribute('animalno'),
+                    sf.attribute('species'),
+                    sf.attribute('production'),
+                    sf.attribute('year'),
+                    sf.attribute('status'),
+                    sf.attribute('suspect'),
+                    sf.attribute('confirmation'),
+                    sf.attribute('expiration'),
+                    sf.attribute('notes'),
+                    sf.attribute('timestamp'),
+                    sf.attribute('grouping'),
+                    sf.geometry().asWkt(),
+                    hrid
+                )
+
+        elif vet_layer_type == VetLayerType.POI_PT.value:
+            sql = """UPDATE pois
+                     SET localid = '%s', code = '%s', activity = '%s', geom = ST_GeomFromText('%s', 4326)
+                     WHERE hrid = '%s';""" \
+                % (
+                    sf.attribute('localid'),
+                    sf.attribute('code'),
+                    sf.attribute('activity'),
+                    sf.geometry().asWkt(),
+                    hrid
+                )
+
+        if vet_layer_type == VetLayerType.OUT_POLY.value:
+            # outbreaks_area is a polygon (simple)
+            # outbreaks_area have to be converted to multipolygon
+            tmp = sf.geometry().convertToType(QgsWkbTypes.PolygonGeometry, True)
+            sql = """UPDATE outbreaks_area
+                     SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
+                        animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
+                        suspect = '%s', confirmation = '%s', expiration = '%s', notes = '%s',
+                        timestamp = '%s', grouping = '%s', geom = ST_GeomFromText('%s', 4326)
+                     WHERE hrid = '%s';""" \
+                    % (
+                        sf.attribute('localid'),
+                        sf.attribute('code'),
+                        sf.attribute('largescale'),
+                        sf.attribute('disease'),
+                        sf.attribute('animalno'),
+                        sf.attribute('species'),
+                        sf.attribute('production'),
+                        sf.attribute('year'),
+                        sf.attribute('status'),
+                        sf.attribute('suspect'),
+                        sf.attribute('confirmation'),
+                        sf.attribute('expiration'),
+                        sf.attribute('notes'),
+                        sf.attribute('timestamp'),
+                        sf.attribute('grouping'),
+                        tmp.asWkt(),
+                        hrid
+                    )
+        elif vet_layer_type == VetLayerType.BUFFER_OUT.value:
+            sql = """UPDATE buffers
+                     SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
+                        animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
+                        suspect = '%s', confirmation = '%s', expiration = '%s', notes = '%s',
+                        timestamp = '%s', geom = ST_GeomFromText('%s', 4326)
+                     WHERE hrid = '%s';""" \
+                    % (
+                        sf.attribute('localid'),
+                        sf.attribute('code'),
+                        sf.attribute('largescale'),
+                        sf.attribute('disease'),
+                        sf.attribute('animalno'),
+                        sf.attribute('species'),
+                        sf.attribute('production'),
+                        sf.attribute('year'),
+                        sf.attribute('status'),
+                        sf.attribute('suspect'),
+                        sf.attribute('confirmation'),
+                        sf.attribute('expiration'),
+                        sf.attribute('notes'),
+                        sf.attribute('timestamp'),
+                        sf.geometry().asWkt(),
+                        hrid
+                    )
+        elif vet_layer_type == VetLayerType.ZONE.value:
+            sql = """UPDATE zones
+                     SET localid = '%s', code = '%s', disease = '%s', zonetype = '%s', subpopulation = '%s',
+                         validity_start = '%s', validity_end = '%s', legal_framework = '%s',
+                         competent_authority = '%s', biosecurity_measures = '%s', control_of_vectors = '%s',
+                         control_of_wildlife_reservoir = '%s', modified_stamping_out = '%s',
+                        movement_restriction = '%s', stamping_out = '%s', surveillance = '%s', vaccination = '%s',
+                        other_measure = '%s', related = '%s', timestamp = '%s',
+                        geom = ST_GeomFromText('%s', 4326)
+                    WHERE hrid = '%s';""" \
+                % (
+                    sf.attribute('localid'),
+                    sf.attribute('code'),
+                    sf.attribute('disease'),
+                    sf.attribute('zonetype'),
+                    sf.attribute('subpopulation'),
+                    sf.attribute('validity_start'),
+                    sf.attribute('validity_end'),
+                    sf.attribute('legal_framework'),
+                    sf.attribute('competent_authority'),
+                    sf.attribute('biosecurity_measures'),
+                    sf.attribute('control_of_vectors'),
+                    sf.attribute('control_of_wildlife_reservoir'),
+                    sf.attribute('modified_stamping_out'),
+                    sf.attribute('movement_restriction'),
+                    sf.attribute('stamping_out'),
+                    sf.attribute('surveillance'),
+                    sf.attribute('vaccination'),
+                    sf.attribute('other_measure'),
+                    sf.attribute('related'),
+                    sf.attribute('timestamp'),
+                    sf.geometry().asWkt(),
+                    hrid
+                )
+        return sql
 
 
     def mergeDB(self):
@@ -194,7 +740,7 @@ class VetEpiGISgroup:
         #                                         level=QgsMessageBar.INFO)
         #     return
 
-        dlg = merge.Dialog()
+        dlg = merge.Dialog(self.dbpath,self.dbtype)
         dlg.setWindowTitle('Import database')
         # dlg.plugin_dir = self.plugin_dir
         x = (self.iface.mainWindow().x()+self.iface.mainWindow().width()/2)-dlg.width()/2
@@ -232,110 +778,110 @@ class VetEpiGISgroup:
                 # self.iface.messageBar().pushMessage('Information', self.ipath, level=QgsMessageBar.INFO)
                 # self.iface.messageBar().pushMessage('Information', self.dbpath, level=QgsMessageBar.INFO)
 
-                conn = spdb.connect(self.dbpath)
+                conn = idb.connect(self.dbpath)
                 cur = conn.cursor()
-                rs = cur.execute("""
-                    CREATE TABLE opointtmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      largescale text,
-                      disease text,
-                      animalno numeric,
-                      species text,
-                      production text,
-                      year numeric,
-                      status text,
-                      suspect text,
-                      confirmation text,
-                      expiration text,
-                      notes text,
-                      hrid text,
-                      timestamp text,
-                      grouping text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE oareatmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      largescale text,
-                      disease text,
-                      animalno numeric,
-                      species text,
-                      production text,
-                      year numeric,
-                      status text,
-                      suspect text,
-                      confirmation text,
-                      expiration text,
-                      notes text,
-                      hrid text,
-                      timestamp text,
-                      grouping text
-                    );
-                    """)
-                rs = cur.execute("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE poistmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      activity text,
-                      hrid text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE bufferstmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      largescale text,
-                      disease text,
-                      animalno numeric,
-                      species text,
-                      production text,
-                      year numeric,
-                      status text,
-                      suspect text,
-                      confirmation text,
-                      expiration text,
-                      notes text,
-                      hrid text,
-                      timestamp text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
-                rs = cur.execute("""
-                    CREATE TABLE zonestmp (
-                      gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                      localid text,
-                      code text,
-                      disease text,
-                      zonetype text,
-                      subpopulation text,
-                      validity_start text,
-                      validity_end text,
-                      legal_framework text,
-                      competent_authority text,
-                      biosecurity_measures text,
-                      control_of_vectors text,
-                      control_of_wildlife_reservoir text,
-                      modified_stamping_out text,
-                      movement_restriction text,
-                      stamping_out text,
-                      surveillance text,
-                      vaccination text,
-                      other_measure text,
-                      related text,
-                      hrid text,
-                      timestamp text
-                    );
-                """)
-                rs = cur.execute("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE opointtmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text,
+                #       grouping text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('opointtmp', 'geom', 4326, 'POINT', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE oareatmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text,
+                #       grouping text
+                #     );
+                #     """)
+                # rs = cur.execute("SELECT AddGeometryColumn('oareatmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE poistmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       activity text,
+                #       hrid text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('poistmp', 'geom', 4326, 'POINT', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE bufferstmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       largescale text,
+                #       disease text,
+                #       animalno numeric,
+                #       species text,
+                #       production text,
+                #       year numeric,
+                #       status text,
+                #       suspect text,
+                #       confirmation text,
+                #       expiration text,
+                #       notes text,
+                #       hrid text,
+                #       timestamp text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('bufferstmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
+                # rs = cur.execute("""
+                #     CREATE TABLE zonestmp (
+                #       gid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                #       localid text,
+                #       code text,
+                #       disease text,
+                #       zonetype text,
+                #       subpopulation text,
+                #       validity_start text,
+                #       validity_end text,
+                #       legal_framework text,
+                #       competent_authority text,
+                #       biosecurity_measures text,
+                #       control_of_vectors text,
+                #       control_of_wildlife_reservoir text,
+                #       modified_stamping_out text,
+                #       movement_restriction text,
+                #       stamping_out text,
+                #       surveillance text,
+                #       vaccination text,
+                #       other_measure text,
+                #       related text,
+                #       hrid text,
+                #       timestamp text
+                #     );
+                # """)
+                # rs = cur.execute("SELECT AddGeometryColumn('zonestmp', 'geom', 4326, 'MULTIPOLYGON', 'XY');")
 
                 # self.iface.messageBar().pushMessage('Information', 'idb: %s' % idb.isOpen(),
                 #                                     level=QgsMessageBar.INFO)
@@ -1059,7 +1605,7 @@ class VetEpiGISgroup:
                         from zonestmp as s where t.hrid = s.hrid;
                     """
 
-                dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
+                #dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
 
                 sql = csql + isql + sqlinup + dsql
 
@@ -1099,14 +1645,16 @@ class VetEpiGISgroup:
                     idb.open()
                 tablst = idb.tables()
 
+                #Check if all tables exist in database
                 for tab in self.tableList:
                     if tab not in tablst:
                         self.iface.messageBar().pushMessage(tool_name, "Database NOT loaded. One or more tables don't exist", level=Qgis.Warning, duration=10)
                         QApplication.restoreOverrideCursor()
                         return
-                self.iface.messageBar().pushMessage(tool_name, "Database loaded. ", level=Qgis.Info, duration=10)
-                self.dbtype = 'spatialite'
 
+                self.iface.messageBar().pushMessage(tool_name, "Database loaded.", level=Qgis.Info, duration=10)
+                self.dbtype = 'spatialite'
+                self.dbpath = self.ipath
 
             elif dlg.radioButton_postgis.isChecked():
                 self.settings.beginGroup('PostgreSQL/connections/' + dlg.comboBox_pg_db.currentText())
@@ -1141,24 +1689,24 @@ class VetEpiGISgroup:
                         return
 
                 try:
-                    PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
+                    self.PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
                 except Exception:
-                    PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
+                    self.PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
 
                 #check if database is spatial
                 # https://stackoverflow.com/questions/53462775/how-to-determine-if-postgis-is-enabled-on-a-database
-                cursor = PGcon.cursor()
+                cursor = self.PGcon.cursor()
                 try:
                     sql = "SELECT PostGIS_version();"
                     cursor.execute(sql)
                 except  psycopg2.Error as e:
                     self.iface.messageBar().pushMessage(tool_name, 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
-                    PGcon.close()
+                    self.PGcon.close()
                     QApplication.restoreOverrideCursor()
                     return
 
                 # Check if tables already exist
-                cursor = PGcon.cursor()
+                cursor = self.PGcon.cursor()
                 # https://www.dbrnd.com/2017/07/postgresql-different-options-to-check-if-table-exists-in-database-to_regclass/
                 # check on public schema
                 sql = """SELECT table_name
@@ -1179,6 +1727,7 @@ class VetEpiGISgroup:
 
                 self.iface.messageBar().pushMessage(tool_name, 'Database loaded.', level=Qgis.Info)
                 self.dbtype = 'postgis'
+                self.dbpath = dlg.comboBox_pg_db.currentText()
 
             QApplication.restoreOverrideCursor()
 
@@ -1193,8 +1742,8 @@ class VetEpiGISgroup:
         dlg.move(x,y)
 
         self.settings.beginGroup('PostgreSQL/connections')
-        PGconns = self.settings.childGroups()
-        for pg in PGconns:
+        self.PGconns = self.settings.childGroups()
+        for pg in self.PGconns:
             dlg.comboBox_pg_db.addItem(pg)
         self.settings.endGroup()
 
@@ -1204,10 +1753,10 @@ class VetEpiGISgroup:
             QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if dlg.radioButton_spatialite.isChecked():
-                self.dbtype = 'spatialite'
-                dbpath = dlg.lineEdit_spatialite.text()
-                ret_sl = self.createNewSLdb(dbpath)
+                ret_sl = self.createNewSLdb(dlg.lineEdit_spatialite.text())
                 if ret_sl:
+                    self.dbtype = 'spatialite'
+                    self.dbpath = dlg.lineEdit_spatialite.text()
                     self.iface.messageBar().pushMessage(tool_name, 'Created database.', level=Qgis.Info)
                     self.sl_path_memorized = dlg.comboBox_pg_db.currentText()
                 else:
@@ -1223,7 +1772,7 @@ class VetEpiGISgroup:
                 self.settings.endGroup()
 
                 #check if pw and user exist
-                PGcon = None
+                self.PGcon = None
                 if not PGusername or PGusername =='':
                     dlg2 = dblogin.Dialog()
                     dlg2.setWindowTitle('Set login')
@@ -1246,24 +1795,24 @@ class VetEpiGISgroup:
                         return
 
                 try:
-                    PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
+                    self.PGcon = psycopg2.connect(host=PGhost, port=PGport, database=PGdatabase, user=PGusername, password=PGpassword)
                 except Exception:
-                    PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
+                    self.PGcon = psycopg2.connect(host=PGhost, database=PGdatabase, user=PGusername, password=PGpassword)
 
                 #check if database is spatial
                 # https://stackoverflow.com/questions/53462775/how-to-determine-if-postgis-is-enabled-on-a-database
-                cursor = PGcon.cursor()
+                cursor = self.PGcon.cursor()
                 try:
                     sql = "SELECT PostGIS_version();"
                     cursor.execute(sql)
                 except  psycopg2.Error as e:
                     self.iface.messageBar().pushMessage(tool_name, 'Select a SPATIAL database!', level=Qgis.Warning, duration=10)
-                    PGcon.close()
+                    self.PGcon.close()
                     QApplication.restoreOverrideCursor()
                     return
 
                 # Check if tables already exist
-                cursor = PGcon.cursor()
+                cursor = self.PGcon.cursor()
                 # https://www.dbrnd.com/2017/07/postgresql-different-options-to-check-if-table-exists-in-database-to_regclass/
                 # check on public schema
                 sql = """SELECT EXISTS (
@@ -1287,7 +1836,7 @@ class VetEpiGISgroup:
                     self.iface.messageBar().clearWidgets()
                     self.iface.messageBar().pushMessage(tool_name, 'Tables already exist. No tables were added to database', level=Qgis.Warning, duration=10)
                 else:
-                    ret_pg = self.createPGtables(PGdatabase, PGcon)
+                    ret_pg = self.createPGtables(PGdatabase, self.PGcon)
                     if ret_pg:
                         self.iface.messageBar().pushMessage(tool_name, 'Added tables to database.', level=Qgis.Info)
                         self.pg_memorized = dlg.comboBox_pg_db.currentText()
@@ -1431,11 +1980,11 @@ class VetEpiGISgroup:
             return False
 
 
-    def createPGtables(self, db_name, PGcon):
+    def createPGtables(self, db_name):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
 
-            cursor = PGcon.cursor()
+            cursor = self.PGcon.cursor()
             sql = """
 
                 CREATE TABLE outbreaks_point (
@@ -1576,7 +2125,7 @@ class VetEpiGISgroup:
                 """
             cursor.execute(sql)
 
-            PGcon.commit()
+            self.PGcon.commit()
 
             # uri = QgsDataSourceURI()
             # uri.setDatabase(os.path.join(os.path.join(self.plugin_dir, 'db'), 'base.sqlite'))
@@ -1615,7 +2164,7 @@ class VetEpiGISgroup:
                             (query.value(1), query.value(2))
             cursor.execute(sql)
 
-            PGcon.commit()
+            self.PGcon.commit()
             db.close()
 
             QApplication.restoreOverrideCursor()
@@ -1624,6 +2173,9 @@ class VetEpiGISgroup:
         except IOError:
             QApplication.restoreOverrideCursor()
             return False
+
+
+
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -1662,4 +2214,11 @@ class VetEpiGISgroup:
         y = (self.iface.mainWindow().y()+self.iface.mainWindow().height()/2)-dlg.height()/2
         dlg.move(x,y)
         dlg.exec_()
+
+class VetLayerType(Enum):
+    OUT_PT = 1
+    OUT_POLY = 2
+    POI_PT = 3
+    BUFFER_OUT = 4
+    ZONE = 5
 
