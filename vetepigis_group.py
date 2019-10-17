@@ -420,19 +420,19 @@ class VetEpiGISgroup:
             table = 'zones'
         return table
 
-    def existHrid(self, vet_layer_type, hrid):
-        #The function return false if hrid not already exist
-        cursor = self.PGcon.cursor()
-        tableName = self.getTableName(vet_layer_type)
+    # def existHrid(self, vet_layer_type, hrid):
+    #     #The function return false if hrid not already exist
+    #     cursor = self.PGcon.cursor()
+    #     tableName = self.getTableName(vet_layer_type)
 
-        sqlHrid = "SELECT count(hrid) FROM %s WHERE hrid = '%s'" % (tableName, hrid)
+    #     sqlHrid = "SELECT count(hrid) FROM %s WHERE hrid = '%s'" % (tableName, hrid)
 
-        cursor.execute(sqlHrid)
-        res = cursor.fetchone()
-        if res[0] == 0:
-            return False
-        else:
-            return True
+    #     cursor.execute(sqlHrid)
+    #     res = cursor.fetchone()
+    #     if res[0] == 0:
+    #         return False
+    #     else:
+    #         return True
 
     def getHridFromWDB(self, vet_layer_type):
 
@@ -459,10 +459,10 @@ class VetEpiGISgroup:
                 hrid_list.append(q.value(0))
 
             idb.close()
-
+        #TODO: if table is empty
         return hrid_list
 
-    #TODO: if table is empty
+
 
 
     def getInsertSQLPG(self, nslst, vet_layer_type, sf):
