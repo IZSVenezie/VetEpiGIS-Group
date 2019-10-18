@@ -221,7 +221,7 @@ class VetEpiGISgroup:
 
         tool_name = 'Add selected item to Working DB'
         #Check if working database is selected
-        if (not self.dbpath or self.dbtype =='') or (not self.dbtype or self.dbtype ==''):
+        if (not self.dbpath or self.dbpath =='') or (not self.dbtype or self.dbtype ==''):
             self.iface.messageBar().pushMessage(tool_name, 'Before continuing, select the working database with \
                 "Setup workind directory" or "Load working directory" tools.', level=Qgis.Warning)
             return
@@ -360,6 +360,7 @@ class VetEpiGISgroup:
                 self.iface.messageBar().pushMessage(tool_name, \
                         'Features added to working database', level=Qgis.Info)
 
+            #TODO: manage feature data with apostophe in the attribute table es: Infection with Aujeszky's disease virus
             if self.dbtype == 'spatialite':
 
                 idb = QSqlDatabase.addDatabase('QSPATIALITE')
@@ -368,6 +369,7 @@ class VetEpiGISgroup:
                     idb.open()
 
                 sql = ''
+                error_list = []
                 for sf in sfeats:
                     check_exist = False
                     #get hrid of selected feature
@@ -379,6 +381,8 @@ class VetEpiGISgroup:
                     if check_exist == False:
                         sql = self.getInsertSQLPG(nslst, layer_type.value, sf)
                         rs = idb.exec_(sql)
+                        if rs.lastError().type() !=0:
+                            error_list.append((layer_type.name, sf.attribute('code')))
 
                     #Feature in WD but not overwrite --> skip feature
                     elif check_exist == True and overwrite_answer == False:
@@ -389,6 +393,8 @@ class VetEpiGISgroup:
 
                         sql = self.getUpdateSQLPG(nslst, layer_type.value, sf, hrid)
                         rs = idb.exec_(sql)
+                        if rs.lastError().type() !=0:
+                            error_list.append((layer_type.name, sf.attribute('gid')))
 
                 #TODO: check if this control is ok here
                 if sql == '':
@@ -396,14 +402,17 @@ class VetEpiGISgroup:
                         "No features were added or modified in the Working database", level=Qgis.Info)
                     return
 
-
-                rs = idb.exec_(sql)
                 idb.commit()
                 idb.close()
 
-                self.iface.messageBar().pushMessage(tool_name, \
-                        'Features added to working database', level=Qgis.Info)
-
+                #TODO: manage no added feature, for example with a log file or put in a message...
+                if error_list:
+                    QMessageBox.warning(self.iface.mainWindow(),
+                        "Warning", "Some features are not added to working database.",
+                        buttons=QMessageBox.Ok, defaultButton=QMessageBox.NoButton)
+                else:
+                    self.iface.messageBar().pushMessage(tool_name, \
+                            'Features added to working database', level=Qgis.Info)
 
 
     def getTableName(self, vet_layer_type):
@@ -420,20 +429,6 @@ class VetEpiGISgroup:
             table = 'zones'
         return table
 
-    # def existHrid(self, vet_layer_type, hrid):
-    #     #The function return false if hrid not already exist
-    #     cursor = self.PGcon.cursor()
-    #     tableName = self.getTableName(vet_layer_type)
-
-    #     sqlHrid = "SELECT count(hrid) FROM %s WHERE hrid = '%s'" % (tableName, hrid)
-
-    #     cursor.execute(sqlHrid)
-    #     res = cursor.fetchone()
-    #     if res[0] == 0:
-    #         return False
-    #     else:
-    #         return True
-
     def getHridFromWDB(self, vet_layer_type):
 
         hrid_list = []
@@ -446,7 +441,6 @@ class VetEpiGISgroup:
             res = cursor.fetchall()
             for r in res:
                 hrid_list.append(r[0])
-
 
         elif self.dbtype == 'spatialite':
             idb = QSqlDatabase.addDatabase('QSPATIALITE')
@@ -556,16 +550,7 @@ class VetEpiGISgroup:
                         sf.attribute('timestamp'),
                         sf.geometry().asWkt()
                     )
-        # elif nslst == self.poi_pt_buf_flds:
-        #     sql = """INSERT INTO poi (localid, code, activity, hrid, geom)
-        #         VALUES ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
-        #         % (
-        #             sf.attribute('localid'),
-        #             sf.attribute('code'),
-        #             sf.attribute('activity'),
-        #             sf.attribute('hrid'),
-        #             sf.geometry().asWkt()
-        #         )
+
         elif vet_layer_type == VetLayerType.ZONE.value:
             sql = """INSERT INTO zones (localid, code, disease, zonetype, subpopulation, validity_start,
                         validity_end, legal_framework, competent_authority, biosecurity_measures,
@@ -1836,7 +1821,7 @@ class VetEpiGISgroup:
                     self.iface.messageBar().clearWidgets()
                     self.iface.messageBar().pushMessage(tool_name, 'Tables already exist. No tables were added to database', level=Qgis.Warning, duration=10)
                 else:
-                    ret_pg = self.createPGtables(PGdatabase, self.PGcon)
+                    ret_pg = self.createPGtables(PGdatabase)
                     if ret_pg:
                         self.iface.messageBar().pushMessage(tool_name, 'Added tables to database.', level=Qgis.Info)
                         self.pg_memorized = dlg.comboBox_pg_db.currentText()
