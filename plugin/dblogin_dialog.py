@@ -8,6 +8,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import *
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -26,37 +27,35 @@ except AttributeError:
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName(_fromUtf8("Dialog"))
-        Dialog.resize(451, 131)
+        Dialog.resize(250, 131)
+
         self.gridLayout = QtWidgets.QGridLayout(Dialog)
         self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
 
-        self.label_db = QtWidgets.QLabel(Dialog)
-        self.label_db.setObjectName(_fromUtf8("label_db"))
-        self.gridLayout.addWidget(self.label_db, 0, 0, 1, 1)
+        self.label_user = QtWidgets.QLabel(Dialog)
+        self.label_user.setObjectName(_fromUtf8("label_user"))
+        self.gridLayout.addWidget(self.label_user, 0, 0, 1, 1)
 
-        self.lineEdit = QtWidgets.QLineEdit(Dialog)
-        self.lineEdit.setReadOnly(True)
-        self.lineEdit.setObjectName(_fromUtf8("lineEdit"))
-        self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 1)
+        self.lineEdit_user = QtWidgets.QLineEdit(Dialog)
+        self.lineEdit_user.setReadOnly(False)
+        self.lineEdit_user.setObjectName(_fromUtf8("lineEdit"))
+        self.gridLayout.addWidget(self.lineEdit_user, 0, 1, 1, 1)
 
-        self.toolButton = QtWidgets.QToolButton(Dialog)
-        self.toolButton.setObjectName(_fromUtf8("toolButton"))
-        self.gridLayout.addWidget(self.toolButton, 0, 2, 1, 1)
+        self.label_pw = QtWidgets.QLabel(Dialog)
+        self.label_pw.setObjectName(_fromUtf8("label_pw"))
+        self.gridLayout.addWidget(self.label_pw, 1, 0, 1, 1)
 
-        self.checkBox = QtWidgets.QCheckBox(Dialog)
-        self.checkBox.setEnabled(False)
-        self.checkBox.setChecked(True)
-        self.checkBox.setObjectName(_fromUtf8("checkBox"))
-        self.gridLayout.addWidget(self.checkBox, 1, 1, 1, 1)
-
-        spacerItem = QtWidgets.QSpacerItem(20, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.gridLayout.addItem(spacerItem, 2, 2, 1, 2)
+        self.lineEdit_pw = QtWidgets.QLineEdit(Dialog)
+        self.lineEdit_pw.setEchoMode(QLineEdit.Password)
+        self.lineEdit_pw.setReadOnly(False)
+        self.lineEdit_pw.setObjectName(_fromUtf8("lineEdit"))
+        self.gridLayout.addWidget(self.lineEdit_pw, 1, 1, 1, 1)
 
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
-        self.gridLayout.addWidget(self.buttonBox, 3, 1, 1, 2)
+        self.gridLayout.addWidget(self.buttonBox, 3, 1, 1, 3)
 
         self.retranslateUi(Dialog)
         self.buttonBox.accepted.connect(Dialog.accept)
@@ -64,8 +63,7 @@ class Ui_Dialog(object):
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog", None))
-        self.label_db.setText(_translate("Dialog", "SpatiaLite file:", None))
-        self.toolButton.setText(_translate("Dialog", "...", None))
-        self.checkBox.setText(_translate("Dialog", "Update existing records", None))
+        Dialog.setWindowTitle(_translate("Dialog", "Set user and password", None))
+        self.label_user.setText(_translate("Dialog", "User: ", None))
+        self.label_pw.setText(_translate("Dialog", "Password: ", None))
 

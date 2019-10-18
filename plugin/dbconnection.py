@@ -36,7 +36,7 @@ import psycopg2.extensions
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 
-from .dbsetup_dialog import Ui_Dialog
+from .dbconnection_dialog import Ui_Dialog
 
 
 class Dialog(QDialog, Ui_Dialog):
@@ -64,7 +64,7 @@ class Dialog(QDialog, Ui_Dialog):
 
 
     def dbSource(self):
-        dbpath = QFileDialog.getSaveFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
+        dbpath = QFileDialog.getOpenFileName(self, 'Select file', QDir.currentPath(), 'SpatiaLite file (*.sqlite *.*)')
         dbpath = dbpath[0]
         if not dbpath or dbpath =='':
           self.lineEdit_spatialite.setText('')
