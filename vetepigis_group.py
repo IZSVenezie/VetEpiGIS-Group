@@ -773,6 +773,7 @@ class VetEpiGISgroup:
                 e = outdb.lastError()
                 e.type()
 
+                #Create temporary tables
                 self.createSLTempTables(outdb)
 
                 for tab in tablst:
@@ -786,17 +787,14 @@ class VetEpiGISgroup:
 
                     if flds==self.poiflds:
                         poin += 1
-                        #q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
                         q = QSqlQuery('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             sql = "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
                                 % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
-                            #rs = outdb.exec_(sql)
                             rs = QSqlQuery(sql,outdb)
                             rs.finish()
 
                     if flds == self.obrflds:
-                        #q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
                         q = QSqlQuery('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             g = q.value(16)
@@ -823,13 +821,11 @@ class VetEpiGISgroup:
                             """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
                                    v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
                                    q.value(12), q.value(13), q.value(14), q.value(15), g)
-                            #rs = outdb.exec_(sql)
                             rs = QSqlQuery(sql,outdb)
                             rs.finish()
 
                     if flds == bflds:
                         buffn += 1
-                        #q = idb.exec_('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
                         q = QSqlQuery('select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
 
                         while q.next():
@@ -849,21 +845,18 @@ class VetEpiGISgroup:
                             """ % (q.value(0), q.value(1), q.value(2), q.value(3),
                                    v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
                                    q.value(12), q.value(13), q.value(14), q.value(15))
-                            #rs = outdb.exec_(sql)
                             rs = QSqlQuery(sql,outdb)
 
                             rs.finish()
 
                     if flds == zflds:
                         zonen += 1
-                        #q = idb.exec_('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
                         q = QSqlQuery('select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             sql = """
                                 insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
                                 values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
                             """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6), q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21))
-                            #rs = outdb.exec_(sql)
                             rs = QSqlQuery(sql,outdb)
                             rs.finish()
 
@@ -891,7 +884,6 @@ class VetEpiGISgroup:
                           oareatmp.geom
                         from oareatmp left join outbreaks_area on oareatmp.hrid=outbreaks_area.hrid where outbreaks_area.hrid is null;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
                     sql = """
@@ -916,7 +908,6 @@ class VetEpiGISgroup:
                           WHERE EXISTS (select * from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
                         ;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
 
@@ -943,7 +934,6 @@ class VetEpiGISgroup:
                           opointtmp.geom
                         from opointtmp left join outbreaks_point on opointtmp.hrid=outbreaks_point.hrid where outbreaks_point.hrid is null;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
                     sql = """
@@ -968,7 +958,6 @@ class VetEpiGISgroup:
                           WHERE EXISTS (select * from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
                         ;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
 
@@ -983,7 +972,6 @@ class VetEpiGISgroup:
                           poistmp.geom
                         from poistmp left join pois on poistmp.hrid=pois.hrid where pois.hrid is null;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
                     sql = """
@@ -996,7 +984,6 @@ class VetEpiGISgroup:
                           WHERE EXISTS (select * from poistmp where pois.hrid = poistmp.hrid)
                         ;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
 
@@ -1023,7 +1010,6 @@ class VetEpiGISgroup:
                           bufferstmp.geom
                         from bufferstmp left join buffers on bufferstmp.hrid=buffers.hrid where buffers.hrid is null;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
                     sql = """
@@ -1047,7 +1033,6 @@ class VetEpiGISgroup:
                           WHERE EXISTS (select * from bufferstmp where buffers.hrid = bufferstmp.hrid)
                         ;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
 
@@ -1080,7 +1065,6 @@ class VetEpiGISgroup:
                           zonestmp.geom
                         from zonestmp left join zones on zonestmp.hrid=zones.hrid where zones.hrid is null;
                     """
-                    #rs = outdb.exec_(sql)
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
                     sql = """
@@ -1110,26 +1094,27 @@ class VetEpiGISgroup:
                           WHERE EXISTS (select * from zonestmp where zones.hrid = zonestmp.hrid)
                         ;
                     """
-                    #rs = outdb.exec_(sql)
-                    rs = QSqlQuery("DELETE FROM opointtmp;",outdb)
+
+                    #Remove elements from temporary tables
+                    rs = QSqlQuery("DROP FROM opointtmp;",outdb)
                     rs.finish()
-                    #rs = QSqlQuery("delete from geometry_columns where  f_table_name='opointtmp';",outdb)
-                    #rs.finish()
-                    rs = QSqlQuery("DELETE FROM oareatmp;",outdb)
-                   # rs = QSqlQuery("delete from geometry_columns where  f_table_name='oareatmp';",outdb)
-                    #rs.finish()
-                    rs = QSqlQuery("DELETE FROM poistmp;",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='opointtmp';",outdb)
                     rs.finish()
-                    #rs = QSqlQuery("delete from geometry_columns where  f_table_name='poistmp';",outdb)
-                    #rs.finish()
-                    rs = QSqlQuery("DELETE FROM  bufferstmp;",outdb)
+                    rs = QSqlQuery("DROP FROM oareatmp;",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='oareatmp';",outdb)
                     rs.finish()
-                    #rs = QSqlQuery("delete from geometry_columns where  f_table_name='bufferstmp';",outdb)
-                    #rs.finish()
-                    rs = QSqlQuery("DELETE FROM  zonestmp;",outdb)
+                    rs = QSqlQuery("DROP FROM poistmp;",outdb)
                     rs.finish()
-                    #rs = QSqlQuery("delete from geometry_columns where  f_table_name='zonestmp';",outdb)
-                   # rs.finish()
+                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='poistmp';",outdb)
+                    rs.finish()
+                    rs = QSqlQuery("DROP FROM  bufferstmp;",outdb)
+                    rs.finish()
+                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='bufferstmp';",outdb)
+                    rs.finish()
+                    rs = QSqlQuery("DROP FROM  zonestmp;",outdb)
+                    rs.finish()
+                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='zonestmp';",outdb)
+                    rs.finish()
 
                     # rs = outdb.exec_("DROP TABLE opointtmp;")
                     # rs = outdb.exec_("delete from geometry_columns where  f_table_name='opointtmp';")
@@ -1147,27 +1132,28 @@ class VetEpiGISgroup:
 
 
             if self.dbtype == 'postgis':
-                idb = QSqlDatabase.addDatabase('QSPATIALITE')
+                idb = QSqlDatabase.addDatabase('QSPATIALITE','inputdb')
                 idb.setDatabaseName(self.ipath)
-                idb.open()
+                if not idb.open():
+                    idb.open()
                 tablst = idb.tables()
 
                 for tab in tablst:
                     rec = idb.record(tab)
                     flds = []
-                    for i in xrange(rec.count()):
+                    for i in range(rec.count()):
                         flds.append(rec.fieldName(i))
 
                     if flds == self.poiflds:
                         poin += 1
-                        q = idb.exec_('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab)
+                        q = QSqlQuery('select localid, code, activity, hrid, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
                                           % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
 
                     if flds == self.obrflds:
-                        q = idb.exec_(
-                            'select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab)
+                        q = QSqlQuery(
+                            'select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             g = q.value(16)
                             if g.find('POINT(') == -1:
@@ -1196,8 +1182,8 @@ class VetEpiGISgroup:
 
                     if flds == bflds:
                         buffn += 1
-                        q = idb.exec_(
-                            'select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                        q = QSqlQuery(
+                            'select localid, code, largescale, disease, animalno, species, production, year, status, suspect, confirmation, expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             try:
                                 v1 = int(q.value(4))
@@ -1218,8 +1204,8 @@ class VetEpiGISgroup:
 
                     if flds == zflds:
                         zonen += 1
-                        q = idb.exec_(
-                            'select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab)
+                        q = QSqlQuery(
+                            'select localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             isql = isql + """
                                 insert into zonestmp (localid, code, disease, zonetype, subpopulation, validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
@@ -1545,7 +1531,7 @@ class VetEpiGISgroup:
                         from zonestmp as s where t.hrid = s.hrid;
                     """
 
-                #dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
+                dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
 
                 sql = csql + isql + sqlinup + dsql
 
@@ -1559,7 +1545,7 @@ class VetEpiGISgroup:
 
 
     def createSLTempTables(self,sqlDatabase):
-
+        #Create temporary table
         tbls = sqlDatabase.tables()
 
         if 'opointtmp' not in tbls:
@@ -1589,10 +1575,6 @@ class VetEpiGISgroup:
                         );"""
 
             query = QSqlQuery(csql, sqlDatabase)
-            e = query.lastError()
-            e.type()
-            e.databaseText()
-            e.driverText()
             query.finish()
 
         if 'oareatmp' not in tbls:
@@ -1620,10 +1602,8 @@ class VetEpiGISgroup:
                             CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
                             );"""
             query = QSqlQuery(csql, sqlDatabase)
-            e = query.lastError()
-            e.type()
-            e.databaseText()
-            e.driverText()
+            query.finish()
+
         if 'poistmp' not in tbls:
             csql="""       CREATE TABLE poistmp (
                             gid INTEGER NOT NULL PRIMARY KEY,
@@ -1638,10 +1618,7 @@ class VetEpiGISgroup:
                             );
                             """
             query = QSqlQuery(csql, sqlDatabase)
-            e = query.lastError()
-            e.type()
-            e.databaseText()
-            e.driverText()
+            query.finish()
 
         if 'bufferstmp' not in tbls:
             csql="""       CREATE TABLE bufferstmp (
@@ -1667,10 +1644,8 @@ class VetEpiGISgroup:
                             CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
                             );"""
             query = QSqlQuery(csql, sqlDatabase)
-            e = query.lastError()
-            e.type()
-            e.databaseText()
-            e.driverText()
+            query.finish()
+
         if 'zonestmp' not in tbls:
             csql="""       CREATE TABLE zonestmp (
                             gid INTEGER NOT NULL PRIMARY KEY,
@@ -1702,10 +1677,7 @@ class VetEpiGISgroup:
                             );
                         """
             query = QSqlQuery(csql, sqlDatabase)
-            e = query.lastError()
-            e.type()
-            e.databaseText()
-            e.driverText()
+            query.finish()
 
 
     def loadDB(self):
