@@ -38,7 +38,7 @@ from .merge_dialog import Ui_Dialog
 
 
 class Dialog(QDialog, Ui_Dialog):
-    def __init__(self, dbname, db_type):
+    def __init__(self, wdbpath, dbtype):
         """Constructor for the dialog.
 
         """
@@ -46,10 +46,12 @@ class Dialog(QDialog, Ui_Dialog):
         QDialog.__init__(self)
 
         self.setupUi(self)
-        self.dbname = dbname
-        self.db_type = db_type
+        self.wdbpath = wdbpath
+        self.dbtype = dbtype
 
         self.toolButton.clicked.connect(self.dbSource)
+        self.setWDBPath()
+
 
     # def setLabelName(self):
     #     if self.db_type == 'postgis':
@@ -65,6 +67,11 @@ class Dialog(QDialog, Ui_Dialog):
         if os.path.isfile(dbpath):
             self.lineEdit.setText(dbpath)
 
-
+    def setWDBPath(self):
+        if self.dbtype == 'postgis':
+            self.label_WD.setText('PostGIS WDB:')
+        elif self.dbtype == 'spatialite':
+            self.label_WD.setText('SpatialLite WDB:')
+        self.label_path_WD.setText(self.wdbpath)
 
 

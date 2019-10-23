@@ -49,14 +49,24 @@ class Ui_Dialog(object):
         self.checkBox.setObjectName(_fromUtf8("checkBox"))
         self.gridLayout.addWidget(self.checkBox, 1, 1, 1, 1)
 
+        self.label_WD = QtWidgets.QLabel(Dialog)
+        self.label_WD.setObjectName(_fromUtf8("label_WD"))
+        self.label_WD.setText('Working database:')
+        self.gridLayout.addWidget(self.label_WD, 2, 0, 1, 1)
+
+        self.label_path_WD = QtWidgets.QLabel(Dialog)
+        self.label_path_WD.setObjectName(_fromUtf8("label_path_WD"))
+        self.label_path_WD.setText('')
+        self.gridLayout.addWidget(self.label_path_WD, 2, 1, 1, 1)
+
         spacerItem = QtWidgets.QSpacerItem(20, 50, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.gridLayout.addItem(spacerItem, 2, 2, 1, 2)
+        self.gridLayout.addItem(spacerItem, 3, 2, 1, 2)
 
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName(_fromUtf8("buttonBox"))
-        self.gridLayout.addWidget(self.buttonBox, 3, 1, 1, 2)
+        self.gridLayout.addWidget(self.buttonBox, 4, 1, 1, 2)
 
         self.retranslateUi(Dialog)
         self.buttonBox.accepted.connect(Dialog.accept)
