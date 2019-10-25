@@ -225,7 +225,7 @@ class VetEpiGISgroup:
         #Check if working database is selected
         if (not self.dbpath or self.dbpath =='') or (not self.dbtype or self.dbtype ==''):
             self.iface.messageBar().pushMessage(tool_name, 'Before continuing, select the working database with \
-                "Setup workind directory" or "Load working directory" tools.', level=Qgis.Warning)
+                "Setup working directory" or "Load working directory" tools.', level=Qgis.Warning)
             return
 
         #check if there are feature selected
@@ -359,7 +359,7 @@ class VetEpiGISgroup:
                 cursor.execute(sql)
                 self.PGcon.commit()
                 # #self.PGcon.close()
-                self.iface.messageBar().pushMessage(tool_name, \
+                self.iface.messageBar().pushMessage(tool_name,
                         'Features added to working database', level=Qgis.Info)
 
             #TODO: manage feature data with apostophe in the attribute table es:
@@ -401,7 +401,7 @@ class VetEpiGISgroup:
 
                 #TODO: check if this control is ok here
                 if sql == '':
-                    self.iface.messageBar().pushMessage(tool_name, \
+                    self.iface.messageBar().pushMessage(tool_name,
                         "No features were added or modified in the Working database", level=Qgis.Info)
                     return
 
@@ -414,7 +414,7 @@ class VetEpiGISgroup:
                         "Warning", "Some features are not added to working database.",
                         buttons=QMessageBox.Ok, defaultButton=QMessageBox.NoButton)
                 else:
-                    self.iface.messageBar().pushMessage(tool_name, \
+                    self.iface.messageBar().pushMessage(tool_name,
                             'Features added to working database', level=Qgis.Info)
 
 
@@ -465,6 +465,18 @@ class VetEpiGISgroup:
     def getInsertSQLPG(self, nslst, vet_layer_type, sf):
         #outbreak point or poi
         if vet_layer_type == VetLayerType.OUT_PT.value:
+
+            try:
+                v1 = int(sf.attribute('animalno'))
+            except ValueError:
+                v1 = 'NULL'
+
+            try:
+                v2 = int(sf.attribute('year'))
+            except ValueError:
+                v2 = 'NULL'
+
+
             sql = """INSERT INTO outbreaks_point (localid, code, largescale, disease,
                 animalno, species, production, year, status, suspect, confirmation,
                 expiration, notes, hrid, timestamp, grouping, geom)
@@ -475,10 +487,10 @@ class VetEpiGISgroup:
                     sf.attribute('code'),
                     sf.attribute('largescale'),
                     sf.attribute('disease'),
-                    sf.attribute('animalno'),
+                    v1,
                     sf.attribute('species'),
                     sf.attribute('production'),
-                    sf.attribute('year'),
+                    v2,
                     sf.attribute('status'),
                     sf.attribute('suspect'),
                     sf.attribute('confirmation'),
@@ -504,6 +516,17 @@ class VetEpiGISgroup:
         if vet_layer_type == VetLayerType.OUT_POLY.value:
             # outbreaks_area is a polygon (simple)
             # outbreaks_area have to be converted to multipolygon
+
+            try:
+                v1 = int(sf.attribute('animalno'))
+            except ValueError:
+                v1 = 'NULL'
+
+            try:
+                v2 = int(sf.attribute('year'))
+            except ValueError:
+                v2 = 'NULL'
+
             tmp = sf.geometry().convertToType(QgsWkbTypes.PolygonGeometry, True)
             sql = """INSERT INTO outbreaks_area(localid, code, largescale, disease,
                     animalno, species, production, year, status, suspect, confirmation,
@@ -515,10 +538,10 @@ class VetEpiGISgroup:
                         sf.attribute('code'),
                         sf.attribute('largescale'),
                         sf.attribute('disease'),
-                        sf.attribute('animalno'),
+                        v1,
                         sf.attribute('species'),
                         sf.attribute('production'),
-                        sf.attribute('year'),
+                        v2,
                         sf.attribute('status'),
                         sf.attribute('suspect'),
                         sf.attribute('confirmation'),
@@ -530,6 +553,17 @@ class VetEpiGISgroup:
                         tmp.asWkt()
                     )
         elif vet_layer_type == VetLayerType.BUFFER_OUT.value:
+
+            try:
+                v1 = int(sf.attribute('animalno'))
+            except ValueError:
+                v1 = 'NULL'
+
+            try:
+                v2 = int(sf.attribute('year'))
+            except ValueError:
+                v2 = 'NULL'
+
             sql = """INSERT INTO buffers (localid, code, largescale, disease,
                     animalno, species, production, year, status, suspect, confirmation,
                     expiration, notes, hrid, timestamp, geom)
@@ -540,10 +574,10 @@ class VetEpiGISgroup:
                         sf.attribute('code'),
                         sf.attribute('largescale'),
                         sf.attribute('disease'),
-                        sf.attribute('animalno'),
+                        v1,
                         sf.attribute('species'),
                         sf.attribute('production'),
-                        sf.attribute('year'),
+                        v2,
                         sf.attribute('status'),
                         sf.attribute('suspect'),
                         sf.attribute('confirmation'),
@@ -592,6 +626,17 @@ class VetEpiGISgroup:
     def getUpdateSQLPG(self, nslst, vet_layer_type, sf, hrid):
         #outbreak point or poi
         if vet_layer_type == VetLayerType.OUT_PT.value:
+
+            try:
+                v1 = int(sf.attribute('animalno'))
+            except ValueError:
+                v1 = 'NULL'
+
+            try:
+                v2 = int(sf.attribute('year'))
+            except ValueError:
+                v2 = 'NULL'
+
             #I don't update hrid
             sql = """UPDATE outbreaks_point
                      SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
@@ -604,10 +649,10 @@ class VetEpiGISgroup:
                     sf.attribute('code'),
                     sf.attribute('largescale'),
                     sf.attribute('disease'),
-                    sf.attribute('animalno'),
+                    v1,
                     sf.attribute('species'),
                     sf.attribute('production'),
-                    sf.attribute('year'),
+                    v2,
                     sf.attribute('status'),
                     sf.attribute('suspect'),
                     sf.attribute('confirmation'),
@@ -632,6 +677,17 @@ class VetEpiGISgroup:
                 )
 
         if vet_layer_type == VetLayerType.OUT_POLY.value:
+
+            try:
+                v1 = int(sf.attribute('animalno'))
+            except ValueError:
+                v1 = 'NULL'
+
+            try:
+                v2 = int(sf.attribute('year'))
+            except ValueError:
+                v2 = 'NULL'
+
             # outbreaks_area is a polygon (simple)
             # outbreaks_area have to be converted to multipolygon
             tmp = sf.geometry().convertToType(QgsWkbTypes.PolygonGeometry, True)
@@ -646,10 +702,10 @@ class VetEpiGISgroup:
                         sf.attribute('code'),
                         sf.attribute('largescale'),
                         sf.attribute('disease'),
-                        sf.attribute('animalno'),
+                        v1,
                         sf.attribute('species'),
                         sf.attribute('production'),
-                        sf.attribute('year'),
+                        v2,
                         sf.attribute('status'),
                         sf.attribute('suspect'),
                         sf.attribute('confirmation'),
@@ -661,6 +717,17 @@ class VetEpiGISgroup:
                         hrid
                     )
         elif vet_layer_type == VetLayerType.BUFFER_OUT.value:
+
+            try:
+                v1 = int(sf.attribute('animalno'))
+            except ValueError:
+                v1 = 'NULL'
+
+            try:
+                v2 = int(sf.attribute('year'))
+            except ValueError:
+                v2 = 'NULL'
+
             sql = """UPDATE buffers
                      SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
                         animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
@@ -672,10 +739,10 @@ class VetEpiGISgroup:
                         sf.attribute('code'),
                         sf.attribute('largescale'),
                         sf.attribute('disease'),
-                        sf.attribute('animalno'),
+                        v1,
                         sf.attribute('species'),
                         sf.attribute('production'),
-                        sf.attribute('year'),
+                        v2,
                         sf.attribute('status'),
                         sf.attribute('suspect'),
                         sf.attribute('confirmation'),
@@ -876,10 +943,13 @@ class VetEpiGISgroup:
                              validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
                             sql = """
-                                insert into zonestmp (localid, code, disease, zonetype, subpopulation, \
-                                    validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, geom)
-                                values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', \
-                                    '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', \
+                                insert into zonestmp (localid, code, disease, zonetype, subpopulation,
+                                    validity_start, validity_end, legal_framework, competent_authority,
+                                    biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir,
+                                    modified_stamping_out, movement_restriction, stamping_out, surveillance,
+                                    vaccination, other_measure, related, hrid, timestamp, geom)
+                                values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                                    '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
                                     ST_GeomFromText('%s', 4326));
                             """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), \
                                 q.value(5), q.value(6), q.value(7), q.value(8), q.value(9),\
