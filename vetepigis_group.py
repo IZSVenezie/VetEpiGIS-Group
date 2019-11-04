@@ -491,7 +491,7 @@ class VetEpiGISgroup:
             sql = """INSERT INTO outbreaks_point (localid, code, largescale, disease,
                 animalno, species, production, year, status, suspect, confirmation,
                 expiration, notes, hrid, timestamp, grouping, geom)
-                VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                VALUES ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s',
                     '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
                 % (
                     attr_dict.get('localid'),
@@ -542,7 +542,7 @@ class VetEpiGISgroup:
             sql = """INSERT INTO outbreaks_area(localid, code, largescale, disease,
                     animalno, species, production, year, status, suspect, confirmation,
                     expiration, notes, hrid, timestamp, grouping, geom)
-                    VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                    VALUES ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s',
                         '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
                     % (
                         attr_dict.get('localid'),
@@ -579,7 +579,7 @@ class VetEpiGISgroup:
             sql = """INSERT INTO buffers (localid, code, largescale, disease,
                     animalno, species, production, year, status, suspect, confirmation,
                     expiration, notes, hrid, timestamp, geom)
-                    VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+                    VALUES ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s',
                         '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));""" \
                     % (
                         attr_dict.get('localid'),
@@ -638,6 +638,8 @@ class VetEpiGISgroup:
 
     def getUpdateSQLPG(self, nslst, vet_layer_type, sf, hrid):
         #outbreak point or poi
+        attr_dict = self.modApostropheInFeature(sf)
+
         if vet_layer_type == VetLayerType.OUT_PT.value:
 
             try:
@@ -653,7 +655,7 @@ class VetEpiGISgroup:
             #I don't update hrid
             sql = """UPDATE outbreaks_point
                      SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
-                        animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
+                        animalno = %s, species = '%s', production = '%s', year = %s, status = '%s',
                         suspect = '%s', confirmation = '%s', expiration = '%s', notes = '%s',
                         timestamp = '%s', grouping = '%s', geom = ST_GeomFromText('%s', 4326)
                      WHERE hrid = '%s';""" \
@@ -706,7 +708,7 @@ class VetEpiGISgroup:
             tmp = sf.geometry().convertToType(QgsWkbTypes.PolygonGeometry, True)
             sql = """UPDATE outbreaks_area
                      SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
-                        animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
+                        animalno = %s, species = '%s', production = '%s', year = %s, status = '%s',
                         suspect = '%s', confirmation = '%s', expiration = '%s', notes = '%s',
                         timestamp = '%s', grouping = '%s', geom = ST_GeomFromText('%s', 4326)
                      WHERE hrid = '%s';""" \
@@ -743,7 +745,7 @@ class VetEpiGISgroup:
 
             sql = """UPDATE buffers
                      SET localid = '%s', code = '%s', largescale = '%s', disease = '%s',
-                        animalno = '%s', species = '%s', production = '%s', year = '%s', status = '%s',
+                        animalno = %s, species = '%s', production = '%s', year = %s, status = '%s',
                         suspect = '%s', confirmation = '%s', expiration = '%s', notes = '%s',
                         timestamp = '%s', geom = ST_GeomFromText('%s', 4326)
                      WHERE hrid = '%s';""" \
