@@ -470,7 +470,7 @@ class VetEpiGISgroup:
 
         """
 
-        attr_dict = self.modApostropheInFeatureAttribute(sf)
+        attr_dict = self.modApostropheInFeature(sf)
 
         #outbreak point or poi
         if vet_layer_type == VetLayerType.OUT_PT.value:
@@ -880,7 +880,7 @@ class VetEpiGISgroup:
                         q = QSqlQuery('select localid, code, activity, hrid, \
                             astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             # sql = "insert into poistmp (localid, code, activity, hrid, \
                             #     geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
                             #     % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
@@ -898,7 +898,7 @@ class VetEpiGISgroup:
                              species, production, year, status, suspect, confirmation, expiration, \
                              notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             g = q.value(16)
                             if g.find('POINT(')==-1:
                                 t = 'oareatmp'
@@ -937,7 +937,7 @@ class VetEpiGISgroup:
                             expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
 
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             try:
                                 v1 = int(attr_dict.get('animalno'))
                             except ValueError:
@@ -968,7 +968,7 @@ class VetEpiGISgroup:
                         q = QSqlQuery('select localid, code, disease, zonetype, subpopulation,\
                              validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             sql = """
                                 insert into zonestmp (localid, code, disease, zonetype, subpopulation,
                                     validity_start, validity_end, legal_framework, competent_authority,
@@ -1253,27 +1253,27 @@ class VetEpiGISgroup:
                     """
 
                     #Remove elements from temporary tables
-                    rs = QSqlQuery("DROP FROM opointtmp;",outdb)
+                    rs = QSqlQuery("DROP TABLE opointtmp;",outdb)
                     rs.finish()
-                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='opointtmp';",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where f_table_name='opointtmp';",outdb)
                     rs.finish()
-                    rs = QSqlQuery("DROP FROM oareatmp;",outdb)
-                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='oareatmp';",outdb)
+                    rs = QSqlQuery("DROP TABLE oareatmp;",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where f_table_name='oareatmp';",outdb)
                     rs.finish()
-                    rs = QSqlQuery("DROP FROM poistmp;",outdb)
+                    rs = QSqlQuery("DROP TABLE poistmp;",outdb)
                     rs.finish()
-                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='poistmp';",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where f_table_name='poistmp';",outdb)
                     rs.finish()
-                    rs = QSqlQuery("DROP FROM  bufferstmp;",outdb)
+                    rs = QSqlQuery("DROP TABLE bufferstmp;",outdb)
                     rs.finish()
-                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='bufferstmp';",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where f_table_name='bufferstmp';",outdb)
                     rs.finish()
-                    rs = QSqlQuery("DROP FROM  zonestmp;",outdb)
+                    rs = QSqlQuery("DROP TABLE zonestmp;",outdb)
                     rs.finish()
-                    rs = QSqlQuery("delete from geometry_columns where  f_table_name='zonestmp';",outdb)
+                    rs = QSqlQuery("delete from geometry_columns where f_table_name='zonestmp';",outdb)
                     rs.finish()
 
-                q.finish()
+                #q.finish()
                 outdb.commit()
                 outdb.close()
 
@@ -1297,7 +1297,7 @@ class VetEpiGISgroup:
                         q = QSqlQuery('select localid, code, activity, hrid, \
                             astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) \
                                 values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
                                           % (attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('activity'),\
@@ -1309,10 +1309,15 @@ class VetEpiGISgroup:
                                 production, year, status, suspect, confirmation, expiration, \
                                 notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             g = q.value(16)
                             if g.find('POINT(') == -1:
                                 t = 'oareatmp'
+                                #set area
+                                geom = QgsGeometry()
+                                geom = geom.fromWkt(g)
+                                tmp = geom.convertToType(QgsWkbTypes.PolygonGeometry, True)
+                                g = tmp.asWkt()
                                 oarean += 1
                             else:
                                 t = 'opointtmp'
@@ -1347,7 +1352,7 @@ class VetEpiGISgroup:
                                 production, year, status, suspect, confirmation, expiration, \
                                 notes, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             try:
                                 v1 = int(q.value(4))
                             except ValueError:
@@ -1379,7 +1384,7 @@ class VetEpiGISgroup:
                                 surveillance, vaccination, other_measure, related, hrid, \
                                 timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
-                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            attr_dict = self.modApostropheInQuery(q)
                             isql = isql + """
                                 insert into zonestmp (localid, code, disease, zonetype, \
                                     subpopulation, validity_start, validity_end, legal_framework, \
@@ -1747,6 +1752,10 @@ class VetEpiGISgroup:
 
                 dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
 
+                print(csql)
+                print(isql)
+                print(sqlinup)
+                print(dsql)
                 sql = csql + isql + sqlinup + dsql
 
                 cursor = self.PGcon.cursor()
@@ -2136,6 +2145,9 @@ class VetEpiGISgroup:
                         self.iface.messageBar().pushMessage(tool_name, \
                             'Error adding tables database.', level=Qgis.Warning)
 
+                self.dbtype = 'postgis'
+                self.dbpath = dlg.comboBox_pg_db.currentText()
+
             QApplication.restoreOverrideCursor()
 
 
@@ -2468,7 +2480,7 @@ class VetEpiGISgroup:
             return False
 
 
-    def modApostropheInFeatureAttribute(self, sf):
+    def modApostropheInFeature(self, sf):
         """ Return a dictionary of elements where strings do not contain apostrophe.
         Input:
             sf: QgsFeature
@@ -2491,16 +2503,16 @@ class VetEpiGISgroup:
 
         return att_dict
 
-    def modApostropheInFeatureAttributeQ(self, q):
+    def modApostropheInQuery(self, sqlQuery):
         """ Return a dictionary of elements where strings do not contain apostrophe.
         Input:
             q: QsqlQuery
         """
         #count attribute in sf
-        rec = q.record()
+        rec = sqlQuery.record()
         att_dict = {}
         for n in range(rec.count()):
-            value = q.value(n)
+            value = sqlQuery.value(n)
             if isinstance(value,str) and value.find("'") != -1:
                 mod_value = value.replace("'","''")
                 att_dict[rec.fieldName(n)] = mod_value
