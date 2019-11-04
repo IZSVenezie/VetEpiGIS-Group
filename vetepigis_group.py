@@ -880,9 +880,16 @@ class VetEpiGISgroup:
                         q = QSqlQuery('select localid, code, activity, hrid, \
                             astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
+                            # sql = "insert into poistmp (localid, code, activity, hrid, \
+                            #     geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
+                            #     % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+
                             sql = "insert into poistmp (localid, code, activity, hrid, \
                                 geom) values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
-                                % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+                                % (attr_dict.get('localid'), attr_dict.get('code'),attr_dict.get('activity'), \
+                                    attr_dict.get('hrid'), attr_dict.get('geom'))
+
                             rs = QSqlQuery(sql,outdb)
                             rs.finish()
 
@@ -891,6 +898,7 @@ class VetEpiGISgroup:
                              species, production, year, status, suspect, confirmation, expiration, \
                              notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             g = q.value(16)
                             if g.find('POINT(')==-1:
                                 t = 'oareatmp'
@@ -900,24 +908,25 @@ class VetEpiGISgroup:
                                 opointn += 1
 
                             try:
-                                v1 = int(q.value(4))
+                                v1 = int(attr_dict.get('animalno'))
                             except ValueError:
                                 v1 = 'NULL'
 
                             try:
-                                v2 = int(q.value(7))
+                                v2 = int(attr_dict.get('year'))
                             except ValueError:
                                 v2 = 'NULL'
 
                             sql = """
-                                insert into %s (localid, code, largescale, disease, animalno, \
-                                    species, production, year, status, suspect, confirmation, expiration, \
+                                insert into %s (localid, code, largescale, disease, animalno,
+                                    species, production, year, status, suspect, confirmation, expiration,
                                     notes, hrid, timestamp, grouping, geom)
-                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', \
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s',
                                     '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                            """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
-                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                                   q.value(12), q.value(13), q.value(14), q.value(15), g)
+                            """ % (t, attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('largescale'), attr_dict.get('disease'), \
+                                   v1, attr_dict.get('species'), attr_dict.get('production'), v2, attr_dict.get('status'), attr_dict.get('suspect'), \
+                                   attr_dict.get('confirmation'), attr_dict.get('expiration'), attr_dict.get('notes'), attr_dict.get('hrid'), \
+                                   attr_dict.get('timestamp'), attr_dict.get('grouping'), g)
                             rs = QSqlQuery(sql,outdb)
                             rs.finish()
 
@@ -928,13 +937,14 @@ class VetEpiGISgroup:
                             expiration, notes, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
 
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             try:
-                                v1 = int(q.value(4))
+                                v1 = int(attr_dict.get('animalno'))
                             except ValueError:
                                 v1 = 'NULL'
 
                             try:
-                                v2 = int(q.value(7))
+                                v2 = int(attr_dict.get('year'))
                             except ValueError:
                                 v2 = 'NULL'
 
@@ -944,9 +954,11 @@ class VetEpiGISgroup:
                                      confirmation, expiration, notes, hrid, timestamp, geom)
                                 values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', \
                                     '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                            """ % (q.value(0), q.value(1), q.value(2), q.value(3),
-                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                                   q.value(12), q.value(13), q.value(14), q.value(15))
+                            """ % (attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('largescale'), \
+                                attr_dict.get('disease'), v1, attr_dict.get('species'), attr_dict.get('production'), v2, \
+                                attr_dict.get('status'), attr_dict.get('suspect'), attr_dict.get('confirmation'), \
+                                attr_dict.get('expiration'), attr_dict.get('notes'), attr_dict.get('hrid'), \
+                                attr_dict.get('timestamp'), q.value(15))
                             rs = QSqlQuery(sql,outdb)
 
                             rs.finish()
@@ -956,6 +968,7 @@ class VetEpiGISgroup:
                         q = QSqlQuery('select localid, code, disease, zonetype, subpopulation,\
                              validity_start, validity_end, legal_framework, competent_authority, biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir, modified_stamping_out, movement_restriction, stamping_out, surveillance, vaccination, other_measure, related, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             sql = """
                                 insert into zonestmp (localid, code, disease, zonetype, subpopulation,
                                     validity_start, validity_end, legal_framework, competent_authority,
@@ -965,9 +978,14 @@ class VetEpiGISgroup:
                                 values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
                                     '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
                                     ST_GeomFromText('%s', 4326));
-                            """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), \
-                                q.value(5), q.value(6), q.value(7), q.value(8), q.value(9),\
-                                q.value(10), q.value(11), q.value(12), q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18), q.value(19), q.value(20), q.value(21))
+                            """ % (attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('disease'),\
+                                attr_dict.get('zonetype'), attr_dict.get('subpopulation'), attr_dict.get('validity_start'), \
+                                attr_dict.get('validity_end'), attr_dict.get('legal_framework'), attr_dict.get('competent_authority'), \
+                                attr_dict.get('biosecurity_measures'), attr_dict.get('control_of_vectors'), \
+                                attr_dict.get('control_of_wildlife_reservoir'), attr_dict.get('modified_stamping_out'),\
+                                attr_dict.get('movement_restriction'), attr_dict.get('stamping_out'), attr_dict.get('surveillance'), \
+                                attr_dict.get('vaccination'), attr_dict.get('other_measure'), attr_dict.get('related'), \
+                                attr_dict.get('hrid'), attr_dict.get('timestamp'), q.value(21))
                             rs = QSqlQuery(sql,outdb)
                             rs.finish()
 
@@ -1268,6 +1286,7 @@ class VetEpiGISgroup:
                 tablst = idb.tables()
 
                 for tab in tablst:
+                    print(tab)
                     rec = idb.record(tab)
                     flds = []
                     for i in range(rec.count()):
@@ -1278,9 +1297,11 @@ class VetEpiGISgroup:
                         q = QSqlQuery('select localid, code, activity, hrid, \
                             astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             isql = isql + "insert into poistmp (localid, code, activity, hrid, geom) \
                                 values ('%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));" \
-                                          % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4))
+                                          % (attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('activity'),\
+                                          attr_dict.get('hrid'), q.value(4))
 
                     if flds == self.obrflds:
                         q = QSqlQuery(
@@ -1288,6 +1309,7 @@ class VetEpiGISgroup:
                                 production, year, status, suspect, confirmation, expiration, \
                                 notes, hrid, timestamp, grouping, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             g = q.value(16)
                             if g.find('POINT(') == -1:
                                 t = 'oareatmp'
@@ -1307,14 +1329,16 @@ class VetEpiGISgroup:
                                 v2 = 'NULL'
 
                             isql = isql + """
-                                insert into %s (localid, code, largescale, disease, animalno, \
-                                    species, production, year, status, suspect, confirmation, \
+                                insert into %s (localid, code, largescale, disease, animalno,
+                                    species, production, year, status, suspect, confirmation,
                                     expiration, notes, hrid, timestamp, grouping, geom)
-                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', \
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s',
                                     '%s', '%s', '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                            """ % (t, q.value(0), q.value(1), q.value(2), q.value(3),
-                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                                   q.value(12), q.value(13), q.value(14), q.value(15), g)
+                            """ % (t, attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('largescale'), \
+                                attr_dict.get('disease'), v1, attr_dict.get('species'), attr_dict.get('production'), \
+                                v2, attr_dict.get('status'), attr_dict.get('suspect'), attr_dict.get('confirmation'),\
+                                attr_dict.get('expiration'), attr_dict.get('notes'), attr_dict.get('hrid'), \
+                                attr_dict.get('timestamp'), q.value('grouping'), g)
 
                     if flds == bflds:
                         buffn += 1
@@ -1323,6 +1347,7 @@ class VetEpiGISgroup:
                                 production, year, status, suspect, confirmation, expiration, \
                                 notes, hrid, timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             try:
                                 v1 = int(q.value(4))
                             except ValueError:
@@ -1334,14 +1359,15 @@ class VetEpiGISgroup:
                                 v2 = 'NULL'
 
                             isql = isql + """
-                                insert into bufferstmp (localid, code, largescale, disease, \
-                                    animalno, species, production, year, status, suspect, confirmation, \
+                                insert into bufferstmp (localid, code, largescale, disease,
+                                    animalno, species, production, year, status, suspect, confirmation,
                                     expiration, notes, hrid, timestamp, geom)
-                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s', \
+                                values ('%s', '%s', '%s', '%s', %s, '%s', '%s', %s, '%s', '%s', '%s',
                                     '%s', '%s', '%s', '%s', ST_GeomFromText('%s', 4326));
-                            """ % (q.value(0), q.value(1), q.value(2), q.value(3),
-                                   v1, q.value(5), q.value(6), v2, q.value(8), q.value(9), q.value(10), q.value(11),
-                                   q.value(12), q.value(13), q.value(14), q.value(15))
+                            """ % (attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('largescale'), attr_dict.get('disease'),
+                                   v1, attr_dict.get('species'), attr_dict.get('production'), v2, \
+                                   attr_dict.get('status'), attr_dict.get('suspect'), attr_dict.get('confirmation'), attr_dict.get('expiration'),
+                                   attr_dict.get('notes'), attr_dict.get('hrid'), attr_dict.get('timestamp'), q.value(15))
 
                     if flds == zflds:
                         zonen += 1
@@ -1353,6 +1379,7 @@ class VetEpiGISgroup:
                                 surveillance, vaccination, other_measure, related, hrid, \
                                 timestamp, astext(geom) as geom from %s;' % tab, idb)
                         while q.next():
+                            attr_dict = self.modApostropheInFeatureAttributeQ(q)
                             isql = isql + """
                                 insert into zonestmp (localid, code, disease, zonetype, \
                                     subpopulation, validity_start, validity_end, legal_framework, \
@@ -1363,10 +1390,15 @@ class VetEpiGISgroup:
                                 values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', \
                                     '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',\
                                      ST_GeomFromText('%s', 4326));
-                            """ % (q.value(0), q.value(1), q.value(2), q.value(3), q.value(4), q.value(5), q.value(6),
-                                   q.value(7), q.value(8), q.value(9), q.value(10), q.value(11), q.value(12),
-                                   q.value(13), q.value(14), q.value(15), q.value(16), q.value(17), q.value(18),
-                                   q.value(19), q.value(20), q.value(21))
+                            """ % (attr_dict.get('localid'), attr_dict.get('code'), attr_dict.get('disease'),\
+                                attr_dict.get('zonetype'), attr_dict.get('subpopulation'), \
+                                attr_dict.get('validity_start'), attr_dict.get('validity_end'), \
+                                attr_dict.get('legal_framework'), attr_dict.get('competent_authority'), \
+                                attr_dict.get('biosecurity_measures'), attr_dict.get('control_of_vectors'), \
+                                attr_dict.get('control_of_wildlife_reservoir'), attr_dict.get('modified_stamping_out'), \
+                                attr_dict.get('movement_restriction'), attr_dict.get('stamping_out'), \
+                                attr_dict.get('surveillance'), attr_dict.get('vaccination'), attr_dict.get('other_measure'), attr_dict.get('related'), \
+                                attr_dict.get('hrid'), attr_dict.get('timestamp'), q.value(21))
 
                 idb.close()
 
@@ -2459,6 +2491,23 @@ class VetEpiGISgroup:
 
         return att_dict
 
+    def modApostropheInFeatureAttributeQ(self, q):
+        """ Return a dictionary of elements where strings do not contain apostrophe.
+        Input:
+            q: QsqlQuery
+        """
+        #count attribute in sf
+        rec = q.record()
+        att_dict = {}
+        for n in range(rec.count()):
+            value = q.value(n)
+            if isinstance(value,str) and value.find("'") != -1:
+                mod_value = value.replace("'","''")
+                att_dict[rec.fieldName(n)] = mod_value
+            else:
+                att_dict[rec.fieldName(n)] = value
+
+        return att_dict
 
 
     def unload(self):
