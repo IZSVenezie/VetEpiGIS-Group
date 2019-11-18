@@ -844,6 +844,16 @@ class VetEpiGISgroup:
                 'related', 'hrid', 'timestamp', 'geom']
             poin = opointn = oarean = zonen = buffn = 0
 
+            overwrite_answer = False
+            if dlg.checkBox.isChecked():
+                #message box for overwrite features
+                overwrite_msg = QMessageBox.question(self.iface.mainWindow(),
+                    "Warning", "Are you sure to overwrite features?",
+                    QMessageBox.Ok, QMessageBox.No)
+                #if ok overwrite
+                if overwrite_msg == QMessageBox.Ok:
+                    overwrite_answer = True
+
             if self.dbtype == 'spatialite':
                 #input spatial lite database
                 idb = QSqlDatabase.addDatabase('QSPATIALITE', 'inputdb')
@@ -876,7 +886,7 @@ class VetEpiGISgroup:
                         flds.append(rec.fieldName(i))
                         # s = s + rec.fieldName(i)
 
-                    #Copy records from input spatialite database to temps tables in Working Database
+                    #Copy records from input spatialite database to temporary tables in Working Database
                     if flds==self.poiflds:
                         poin += 1
                         q = QSqlQuery('select localid, code, activity, hrid, \
@@ -904,6 +914,11 @@ class VetEpiGISgroup:
                             g = q.value(16)
                             if g.find('POINT(')==-1:
                                 t = 'oareatmp'
+                                #set area
+                                geom = QgsGeometry()
+                                geom = geom.fromWkt(g)
+                                tmp = geom.convertToType(QgsWkbTypes.PolygonGeometry, True)
+                                g = tmp.asWkt()
                                 oarean += 1
                             else:
                                 t = 'opointtmp'
@@ -930,6 +945,9 @@ class VetEpiGISgroup:
                                    attr_dict.get('confirmation'), attr_dict.get('expiration'), attr_dict.get('notes'), attr_dict.get('hrid'), \
                                    attr_dict.get('timestamp'), attr_dict.get('grouping'), g)
                             rs = QSqlQuery(sql,outdb)
+                            e = rs.lastError()
+                            print(e.type())
+                            print(e.text())
                             rs.finish()
 
                     if flds == bflds:
@@ -961,8 +979,11 @@ class VetEpiGISgroup:
                                 attr_dict.get('status'), attr_dict.get('suspect'), attr_dict.get('confirmation'), \
                                 attr_dict.get('expiration'), attr_dict.get('notes'), attr_dict.get('hrid'), \
                                 attr_dict.get('timestamp'), q.value(15))
+                            print(sql)
                             rs = QSqlQuery(sql,outdb)
-
+                            e = rs.lastError()
+                            print(e.type())
+                            print(e.text())
                             rs.finish()
 
                     if flds == zflds:
@@ -1027,30 +1048,32 @@ class VetEpiGISgroup:
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
                     #This query is useful to update records where oareatmp.hrid is equal to outbreaks_area.hrid
-                    sql = """
-                        update outbreaks_area
-                        set localid = (select localid from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          code = (select code from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          largescale = (select largescale from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          disease = (select disease from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          animalno = (select animalno from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          species = (select species from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          production = (select production from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          year = (select year from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          status = (select status from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          suspect = (select suspect from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          confirmation = (select confirmation from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          expiration = (select expiration from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          notes = (select notes from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          hrid = (select hrid from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          timestamp = (select timestamp from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          grouping = (select grouping from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
-                          geom = (select geom from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
-                        WHERE EXISTS (select * from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
-                        ;
-                    """
-                    rs = QSqlQuery(sql,outdb)
-                    rs.finish()
+                    if overwrite_answer == True:
+                        sql = """
+                            update outbreaks_area
+                            set localid = (select localid from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            code = (select code from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            largescale = (select largescale from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            disease = (select disease from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            animalno = (select animalno from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            species = (select species from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            production = (select production from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            year = (select year from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            status = (select status from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            suspect = (select suspect from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            confirmation = (select confirmation from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            expiration = (select expiration from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            notes = (select notes from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            hrid = (select hrid from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            timestamp = (select timestamp from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            grouping = (select grouping from oareatmp where outbreaks_area.hrid = oareatmp.hrid),
+                            geom = (select geom from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
+                            WHERE EXISTS (select * from oareatmp where outbreaks_area.hrid = oareatmp.hrid)
+                            ;
+                        """
+                        rs = QSqlQuery(sql,outdb)
+                        rs.finish()
+
 
                 if opointn>0:
                     sql = """
@@ -1080,30 +1103,32 @@ class VetEpiGISgroup:
                     """
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
-                    sql = """
-                        update outbreaks_point
-                        set localid = (select localid from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          code = (select code from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          largescale = (select largescale from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          disease = (select disease from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          animalno = (select animalno from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          species = (select species from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          production = (select production from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          year = (select year from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          status = (select status from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          suspect = (select suspect from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          confirmation = (select confirmation from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          expiration = (select expiration from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          notes = (select notes from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          hrid = (select hrid from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          timestamp = (select timestamp from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          grouping = (select grouping from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
-                          geom = (select geom from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
-                        WHERE EXISTS (select * from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
-                        ;
-                    """
-                    rs = QSqlQuery(sql,outdb)
-                    rs.finish()
+
+                    if overwrite_answer == True:
+                        sql = """
+                            update outbreaks_point
+                            set localid = (select localid from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            code = (select code from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            largescale = (select largescale from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            disease = (select disease from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            animalno = (select animalno from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            species = (select species from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            production = (select production from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            year = (select year from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            status = (select status from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            suspect = (select suspect from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            confirmation = (select confirmation from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            expiration = (select expiration from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            notes = (select notes from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            hrid = (select hrid from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            timestamp = (select timestamp from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            grouping = (select grouping from opointtmp where outbreaks_point.hrid = opointtmp.hrid),
+                            geom = (select geom from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
+                            WHERE EXISTS (select * from opointtmp where outbreaks_point.hrid = opointtmp.hrid)
+                            ;
+                        """
+                        rs = QSqlQuery(sql,outdb)
+                        rs.finish()
 
                 if poin>0:
                     sql = """
@@ -1121,18 +1146,20 @@ class VetEpiGISgroup:
                     """
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
-                    sql = """
-                        update pois
-                        set localid = (select localid from poistmp where pois.hrid = poistmp.hrid),
-                          code = (select code from poistmp where pois.hrid = poistmp.hrid),
-                          activity = (select activity from poistmp where pois.hrid = poistmp.hrid),
-                          hrid = (select hrid from poistmp where pois.hrid = poistmp.hrid),
-                          geom = (select geom from poistmp where pois.hrid = poistmp.hrid)
-                        WHERE EXISTS (select * from poistmp where pois.hrid = poistmp.hrid)
-                        ;
-                    """
-                    rs = QSqlQuery(sql,outdb)
-                    rs.finish()
+
+                    if overwrite_answer == True:
+                        sql = """
+                            update pois
+                            set localid = (select localid from poistmp where pois.hrid = poistmp.hrid),
+                            code = (select code from poistmp where pois.hrid = poistmp.hrid),
+                            activity = (select activity from poistmp where pois.hrid = poistmp.hrid),
+                            hrid = (select hrid from poistmp where pois.hrid = poistmp.hrid),
+                            geom = (select geom from poistmp where pois.hrid = poistmp.hrid)
+                            WHERE EXISTS (select * from poistmp where pois.hrid = poistmp.hrid)
+                            ;
+                        """
+                        rs = QSqlQuery(sql,outdb)
+                        rs.finish()
 
 
                 if buffn>0:
@@ -1164,29 +1191,31 @@ class VetEpiGISgroup:
                     """
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
-                    sql = """
-                        update buffers
-                        set localid = (select localid from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          code = (select code from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          largescale = (select largescale from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          disease = (select disease from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          animalno = (select animalno from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          species = (select species from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          production = (select production from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          year = (select year from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          status = (select status from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          suspect = (select suspect from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          confirmation = (select confirmation from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          expiration = (select expiration from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          notes = (select notes from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          hrid = (select hrid from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          timestamp = (select timestamp from bufferstmp where buffers.hrid = bufferstmp.hrid),
-                          geom = (select geom from bufferstmp where buffers.hrid = bufferstmp.hrid)
-                        WHERE EXISTS (select * from bufferstmp where buffers.hrid = bufferstmp.hrid)
-                        ;
-                    """
-                    rs = QSqlQuery(sql,outdb)
-                    rs.finish()
+
+                    if overwrite_answer == True:
+                        sql = """
+                            update buffers
+                            set localid = (select localid from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            code = (select code from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            largescale = (select largescale from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            disease = (select disease from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            animalno = (select animalno from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            species = (select species from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            production = (select production from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            year = (select year from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            status = (select status from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            suspect = (select suspect from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            confirmation = (select confirmation from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            expiration = (select expiration from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            notes = (select notes from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            hrid = (select hrid from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            timestamp = (select timestamp from bufferstmp where buffers.hrid = bufferstmp.hrid),
+                            geom = (select geom from bufferstmp where buffers.hrid = bufferstmp.hrid)
+                            WHERE EXISTS (select * from bufferstmp where buffers.hrid = bufferstmp.hrid)
+                            ;
+                        """
+                        rs = QSqlQuery(sql,outdb)
+                        rs.finish()
 
 
                 if zonen>0:
@@ -1226,33 +1255,37 @@ class VetEpiGISgroup:
                     """
                     rs = QSqlQuery(sql,outdb)
                     rs.finish()
-                    sql = """
-                        update zones
-                        set localid = (select localid from zonestmp where zones.hrid = zonestmp.hrid),
-                          code = (select code from zonestmp where zones.hrid = zonestmp.hrid),
-                          disease = (select disease from zonestmp where zones.hrid = zonestmp.hrid),
-                          zonetype = (select zonetype from zonestmp where zones.hrid = zonestmp.hrid),
-                          subpopulation = (select subpopulation from zonestmp where zones.hrid = zonestmp.hrid),
-                          validity_start = (select validity_start from zonestmp where zones.hrid = zonestmp.hrid),
-                          validity_end = (select validity_end from zonestmp where zones.hrid = zonestmp.hrid),
-                          legal_framework = (select legal_framework from zonestmp where zones.hrid = zonestmp.hrid),
-                          competent_authority = (select competent_authority from zonestmp where zones.hrid = zonestmp.hrid),
-                          biosecurity_measures = (select biosecurity_measures from zonestmp where zones.hrid = zonestmp.hrid),
-                          control_of_vectors = (select control_of_vectors from zonestmp where zones.hrid = zonestmp.hrid),
-                          control_of_wildlife_reservoir = (select control_of_wildlife_reservoir from zonestmp where zones.hrid = zonestmp.hrid),
-                          modified_stamping_out = (select modified_stamping_out from zonestmp where zones.hrid = zonestmp.hrid),
-                          movement_restriction = (select movement_restriction from zonestmp where zones.hrid = zonestmp.hrid),
-                          stamping_out = (select stamping_out from zonestmp where zones.hrid = zonestmp.hrid),
-                          surveillance = (select surveillance from zonestmp where zones.hrid = zonestmp.hrid),
-                          vaccination = (select vaccination from zonestmp where zones.hrid = zonestmp.hrid),
-                          other_measure = (select other_measure from zonestmp where zones.hrid = zonestmp.hrid),
-                          related = (select related from zonestmp where zones.hrid = zonestmp.hrid),
-                          hrid = (select hrid from zonestmp where zones.hrid = zonestmp.hrid),
-                          timestamp = (select timestamp from zonestmp where zones.hrid = zonestmp.hrid),
-                          geom = (select geom from zonestmp where zones.hrid = zonestmp.hrid)
-                        WHERE EXISTS (select * from zonestmp where zones.hrid = zonestmp.hrid)
-                        ;
-                    """
+
+                    if overwrite_answer == True:
+                        sql = """
+                            update zones
+                            set localid = (select localid from zonestmp where zones.hrid = zonestmp.hrid),
+                            code = (select code from zonestmp where zones.hrid = zonestmp.hrid),
+                            disease = (select disease from zonestmp where zones.hrid = zonestmp.hrid),
+                            zonetype = (select zonetype from zonestmp where zones.hrid = zonestmp.hrid),
+                            subpopulation = (select subpopulation from zonestmp where zones.hrid = zonestmp.hrid),
+                            validity_start = (select validity_start from zonestmp where zones.hrid = zonestmp.hrid),
+                            validity_end = (select validity_end from zonestmp where zones.hrid = zonestmp.hrid),
+                            legal_framework = (select legal_framework from zonestmp where zones.hrid = zonestmp.hrid),
+                            competent_authority = (select competent_authority from zonestmp where zones.hrid = zonestmp.hrid),
+                            biosecurity_measures = (select biosecurity_measures from zonestmp where zones.hrid = zonestmp.hrid),
+                            control_of_vectors = (select control_of_vectors from zonestmp where zones.hrid = zonestmp.hrid),
+                            control_of_wildlife_reservoir = (select control_of_wildlife_reservoir from zonestmp where zones.hrid = zonestmp.hrid),
+                            modified_stamping_out = (select modified_stamping_out from zonestmp where zones.hrid = zonestmp.hrid),
+                            movement_restriction = (select movement_restriction from zonestmp where zones.hrid = zonestmp.hrid),
+                            stamping_out = (select stamping_out from zonestmp where zones.hrid = zonestmp.hrid),
+                            surveillance = (select surveillance from zonestmp where zones.hrid = zonestmp.hrid),
+                            vaccination = (select vaccination from zonestmp where zones.hrid = zonestmp.hrid),
+                            other_measure = (select other_measure from zonestmp where zones.hrid = zonestmp.hrid),
+                            related = (select related from zonestmp where zones.hrid = zonestmp.hrid),
+                            hrid = (select hrid from zonestmp where zones.hrid = zonestmp.hrid),
+                            timestamp = (select timestamp from zonestmp where zones.hrid = zonestmp.hrid),
+                            geom = (select geom from zonestmp where zones.hrid = zonestmp.hrid)
+                            WHERE EXISTS (select * from zonestmp where zones.hrid = zonestmp.hrid)
+                            ;
+                        """
+                        rs = QSqlQuery(sql,outdb)
+                        rs.finish()
 
                     #Remove elements from temporary tables
                     rs = QSqlQuery("DROP TABLE opointtmp;",outdb)
@@ -1523,9 +1556,10 @@ class VetEpiGISgroup:
                       CONSTRAINT enforce_srid_geom CHECK (st_srid(geom) = 4326)
                     );
                 """
-
+                sqlin = ''
+                sqlup = ''
                 if oarean>0:
-                    sqlinup = sqlinup + """
+                    sqlin = sqlin + """
                         insert into outbreaks_area (localid, code, largescale, disease,
                             animalno, species, production, year, status, suspect, confirmation,
                             expiration, notes, hrid, timestamp, grouping, geom)
@@ -1551,30 +1585,33 @@ class VetEpiGISgroup:
                             join oareatmp
                                 on outbreaks_area.hrid = oareatmp.hrid
                         where outbreaks_area.hrid is null;
-                        update outbreaks_area as t
-                        set localid = s.localid,
-                          code = s.code,
-                          largescale = s.largescale,
-                          disease = s.disease,
-                          animalno = s.animalno,
-                          species = s.species,
-                          production = s.production,
-                          year = s.year,
-                          status = s.status,
-                          suspect = s.suspect,
-                          confirmation = s.confirmation,
-                          expiration = s.expiration,
-                          notes = s.notes,
-                          hrid = s.hrid,
-                          timestamp = s.timestamp,
-                          grouping = s.grouping,
-                          geom = s.geom
-                        from oareatmp as s
-                        where t.hrid = s.hrid;
-                    """
+                        """
+                    if overwrite_answer:
+                        sqlup = sqlup + """
+                            update outbreaks_area as t
+                            set localid = s.localid,
+                            code = s.code,
+                            largescale = s.largescale,
+                            disease = s.disease,
+                            animalno = s.animalno,
+                            species = s.species,
+                            production = s.production,
+                            year = s.year,
+                            status = s.status,
+                            suspect = s.suspect,
+                            confirmation = s.confirmation,
+                            expiration = s.expiration,
+                            notes = s.notes,
+                            hrid = s.hrid,
+                            timestamp = s.timestamp,
+                            grouping = s.grouping,
+                            geom = s.geom
+                            from oareatmp as s
+                            where t.hrid = s.hrid;
+                        """
 
                 if opointn>0:
-                    sqlinup = sqlinup + """
+                    sqlin = sqlin + """
                         insert into outbreaks_point (localid, code, largescale, disease,
                             animalno, species, production, year, status, suspect,
                             confirmation, expiration, notes, hrid, timestamp, grouping, geom)
@@ -1600,30 +1637,34 @@ class VetEpiGISgroup:
                         right join opointtmp
                             on outbreaks_point.hrid = opointtmp.hrid
                         where outbreaks_point.hrid is null;
-                        update outbreaks_point as t
-                        set localid = s.localid,
-                          code = s.code,
-                          largescale = s.largescale,
-                          disease = s.disease,
-                          animalno = s.animalno,
-                          species = s.species,
-                          production = s.production,
-                          year = s.year,
-                          status = s.status,
-                          suspect = s.suspect,
-                          confirmation = s.confirmation,
-                          expiration = s.expiration,
-                          notes = s.notes,
-                          hrid = s.hrid,
-                          timestamp = s.timestamp,
-                          grouping = s.grouping,
-                          geom = s.geom
-                        from opointtmp as s
-                        where t.hrid = s.hrid;
-                    """
+                        """
+
+                    if overwrite_answer:
+                        sqlup = sqlup + """
+                            update outbreaks_point as t
+                            set localid = s.localid,
+                            code = s.code,
+                            largescale = s.largescale,
+                            disease = s.disease,
+                            animalno = s.animalno,
+                            species = s.species,
+                            production = s.production,
+                            year = s.year,
+                            status = s.status,
+                            suspect = s.suspect,
+                            confirmation = s.confirmation,
+                            expiration = s.expiration,
+                            notes = s.notes,
+                            hrid = s.hrid,
+                            timestamp = s.timestamp,
+                            grouping = s.grouping,
+                            geom = s.geom
+                            from opointtmp as s
+                            where t.hrid = s.hrid;
+                        """
 
                 if poin>0:
-                    sqlinup = sqlinup + """
+                    sqlin = sqlin + """
                         insert into pois (localid, code, activity, hrid, geom)
                         select
                           poistmp.localid,
@@ -1635,18 +1676,22 @@ class VetEpiGISgroup:
                         right join poistmp
                             on pois.hrid = poistmp.hrid
                         where pois.hrid is null;
-                        update pois as t
-                        set localid = s.localid,
-                          code = s.code,
-                          activity = s.activity,
-                          hrid = s.hrid,
-                          geom = s.geom
-                        from poistmp as s
-                        where t.hrid = s.hrid;
                     """
 
+                    if overwrite_answer:
+                        sqlup = sqlup + """
+                            update pois as t
+                            set localid = s.localid,
+                            code = s.code,
+                            activity = s.activity,
+                            hrid = s.hrid,
+                            geom = s.geom
+                            from poistmp as s
+                            where t.hrid = s.hrid;
+                        """
+
                 if buffn>0:
-                    sqlinup = sqlinup + """
+                    sqlin = sqlin + """
                         insert into buffers (localid, code, largescale, disease, animalno,
                             species, production, year, status, suspect, confirmation, expiration,
                             notes, hrid, timestamp, geom)
@@ -1671,29 +1716,33 @@ class VetEpiGISgroup:
                         right join bufferstmp
                             on buffers.hrid = bufferstmp.hrid
                         where buffers.hrid is null;
-                        update buffers as t
-                        set localid = s.localid,
-                          code = s.code,
-                          largescale = s.largescale,
-                          disease = s.disease,
-                          animalno = s.animalno,
-                          species = s.species,
-                          production = s.production,
-                          year = s.year,
-                          status = s.status,
-                          suspect = s.suspect,
-                          confirmation = s.confirmation,
-                          expiration = s.expiration,
-                          notes = s.notes,
-                          hrid = s.hrid,
-                          timestamp = s.timestamp,
-                          geom = s.geom
-                        from bufferstmp as s
-                        where t.hrid = s.hrid;
-                    """
+                        """
+
+                    if overwrite_answer:
+                        sqlup = sqlup + """
+                            update buffers as t
+                            set localid = s.localid,
+                            code = s.code,
+                            largescale = s.largescale,
+                            disease = s.disease,
+                            animalno = s.animalno,
+                            species = s.species,
+                            production = s.production,
+                            year = s.year,
+                            status = s.status,
+                            suspect = s.suspect,
+                            confirmation = s.confirmation,
+                            expiration = s.expiration,
+                            notes = s.notes,
+                            hrid = s.hrid,
+                            timestamp = s.timestamp,
+                            geom = s.geom
+                            from bufferstmp as s
+                            where t.hrid = s.hrid;
+                        """
 
                 if zonen>0:
-                    sqlinup = sqlinup + """
+                    sqlin = sqlin + """
                         insert into zones (localid, code, disease, zonetype, subpopulation,
                             validity_start, validity_end, legal_framework, competent_authority,
                             biosecurity_measures, control_of_vectors, control_of_wildlife_reservoir,
@@ -1725,40 +1774,43 @@ class VetEpiGISgroup:
                         from zones
                         right join zonestmp on zones.hrid = zonestmp.hrid
                         where zones.hrid is null;
-                        update zones as t
-                        set localid = s.localid,
-                          code = s.code,
-                          disease = s.disease,
-                          zonetype = s.zonetype,
-                          subpopulation = s.subpopulation,
-                          validity_start = s.validity_start,
-                          validity_end = s.validity_end,
-                          legal_framework = s.legal_framework,
-                          competent_authority = s.competent_authority,
-                          biosecurity_measures = s.biosecurity_measures,
-                          control_of_vectors = s.control_of_vectors,
-                          control_of_wildlife_reservoir = s.control_of_wildlife_reservoir,
-                          modified_stamping_out = s.modified_stamping_out,
-                          movement_restriction = s.movement_restriction,
-                          stamping_out = s.stamping_out,
-                          surveillance = s.surveillance,
-                          vaccination = s.vaccination,
-                          other_measure = s.other_measure,
-                          related = s.related,
-                          hrid = s.hrid,
-                          timestamp = s.timestamp,
-                          geom = s.geom
-                        from zonestmp as s
-                        where t.hrid = s.hrid;
                     """
+                    if overwrite_answer:
+                        sqlup = sqlup + """
+                            update zones as t
+                            set localid = s.localid,
+                            code = s.code,
+                            disease = s.disease,
+                            zonetype = s.zonetype,
+                            subpopulation = s.subpopulation,
+                            validity_start = s.validity_start,
+                            validity_end = s.validity_end,
+                            legal_framework = s.legal_framework,
+                            competent_authority = s.competent_authority,
+                            biosecurity_measures = s.biosecurity_measures,
+                            control_of_vectors = s.control_of_vectors,
+                            control_of_wildlife_reservoir = s.control_of_wildlife_reservoir,
+                            modified_stamping_out = s.modified_stamping_out,
+                            movement_restriction = s.movement_restriction,
+                            stamping_out = s.stamping_out,
+                            surveillance = s.surveillance,
+                            vaccination = s.vaccination,
+                            other_measure = s.other_measure,
+                            related = s.related,
+                            hrid = s.hrid,
+                            timestamp = s.timestamp,
+                            geom = s.geom
+                            from zonestmp as s
+                            where t.hrid = s.hrid;
+                        """
 
                 dsql = "DROP TABLE IF EXISTS oareatmp, opointtmp, poistmp, bufferstmp, zonestmp;"
 
-                print(csql)
-                print(isql)
-                print(sqlinup)
-                print(dsql)
-                sql = csql + isql + sqlinup + dsql
+                # print(csql)
+                # print(isql)
+                # print(sqlinup)
+                # print(dsql)
+                sql = csql + isql + sqlin + sqlup + dsql
 
                 cursor = self.PGcon.cursor()
                 cursor.execute(sql)
