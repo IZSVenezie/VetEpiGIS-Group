@@ -44,7 +44,7 @@ class Ui_Dialog(object):
         self.gridLayout.addWidget(self.toolButton, 0, 2, 1, 1)
 
         self.checkBox = QtWidgets.QCheckBox(Dialog)
-        self.checkBox.setEnabled(False)
+        self.checkBox.setEnabled(True)
         self.checkBox.setChecked(True)
         self.checkBox.setObjectName(_fromUtf8("checkBox"))
         self.gridLayout.addWidget(self.checkBox, 1, 1, 1, 1)
