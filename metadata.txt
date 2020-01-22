@@ -21,6 +21,17 @@ about=VetEpiGIS-Group is a part of VetEpiGIS plugin family helping veterinarian 
 
 # Uncomment the following line and add your changelog:
 # changelog=
+    ** General **
+    0.801:
+        - Fixed bug on 'copy selected feature in working database';
+
+	0.800:
+    	- Fixed crash when values contains apostrophe;
+        - Update: Modify setup Working database tool;
+		- Update: Split tool in 'setup working database' and 'load working database';
+        - Updated 'Merging database' UI;
+		- Enabled checkbox to update existing features;
+        - Added Tool that copy selected feature in working database;
 
 # Tags are comma separated with spaces allowed
 tags=
@@ -31,7 +42,7 @@ repository=https://github.com/IZSVenezie/VetEpiGIS-Group
 category=Plugins
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
