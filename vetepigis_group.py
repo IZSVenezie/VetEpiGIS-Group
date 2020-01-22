@@ -338,9 +338,10 @@ class VetEpiGISgroup:
                     if hrid in hrid_list:
                         check_exist = True
 
-                    #Feature is not in WD --> insert feature
+                    #Feature is not in Wsf
+                    # D --> insert feature
                     if check_exist == False:
-                        sql = sql + self.getInsertSQLPG(layer_type.value, sf)
+                        sql = sql + self.getInsertSQLPG(nslst,layer_type.value, sf)
 
                     #Feature in WD but not overwrite --> skip feature
                     elif check_exist == True and overwrite_answer == False:
